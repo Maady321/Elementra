@@ -1,0 +1,26 @@
+.App {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+main {
+  flex: 1;
+  padding-top: 80px;
+}
+
+.App:has(.navbar + main.no-nav) main {
+  padding-top: 0;
+}
+
+/* Or simpler, passing a class if I modify JSX more. 
+Actually let's just make main padding 0 if parent has a certain class. */
+.App--no-nav main {
+  padding-top: 0;
+}
+
+@media (max-width: 991px) {
+  main {
+    padding-top: 70px;
+  }
+}
