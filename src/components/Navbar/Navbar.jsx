@@ -33,7 +33,7 @@ export default function Navbar() {
     <nav className={`navbar ${scrolled ? 'navbar--scrolled' : ''}`}>
       <div className="navbar__container container">
         <Link to="/" className="navbar__logo">
-          <img src={logoImg} alt="Elmentra Logo" className="navbar__logo-img" />
+          <img src={logoImg} alt="Elementra Logo" className="navbar__logo-img" />
         </Link>
 
         <div className={`navbar__links ${mobileOpen ? 'navbar__links--open' : ''}`}>

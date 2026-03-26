@@ -299,7 +299,7 @@ export default function AdminDashboard() {
       <aside className="admin__sidebar">
         <div className="admin__sidebar-header">
           <Link to="/" className="admin__sidebar-logo-wrap">
-            <img src={logoImg} alt="Elmentra" className="admin__sidebar-logo-img" />
+            <img src={logoImg} alt="Elementra" className="admin__sidebar-logo-img" />
           </Link>
           <span className="admin__role-badge">Admin</span>
         </div>

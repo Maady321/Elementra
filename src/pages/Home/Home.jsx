@@ -369,7 +369,7 @@ export default function Home() {
         <div className="container">
           <div className="footer__content">
             <div className="footer__brand">
-              <img src={logoImg} alt="Elmentra" className="footer__logo-img" />
+              <img src={logoImg} alt="Elementra" className="footer__logo-img" />
               <p className="footer__tagline">Building premium websites for local businesses.</p>
             </div>
 
@@ -388,7 +388,7 @@ export default function Home() {
           </div>
 
           <div className="footer__bottom">
-            <p>© 2026 Elmentra. All rights reserved.</p>
+            <p>© 2026 Elementra. All rights reserved.</p>
           </div>
         </div>
       </footer>

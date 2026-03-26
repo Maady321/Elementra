@@ -227,7 +227,7 @@ export default function Dashboard() {
       <div className="dashboard__sidebar">
         <div className="dashboard__sidebar-header">
           <Link to="/" className="dashboard__sidebar-logo-wrap">
-            <img src={logoImg} alt="Elmentra" className="dashboard__sidebar-logo-img" />
+            <img src={logoImg} alt="Elementra" className="dashboard__sidebar-logo-img" />
           </Link>
         </div>
 

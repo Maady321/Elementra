@@ -1,11 +1,11 @@
-# ⚡ Elmentra - The Future of Visual Identity
+# ⚡ Elementra - The Future of Visual Identity
 
-Elmentra is a high-fidelity, futuristic web platform designed for premium brand management and client project tracking. Built with React, Vite, and React Three Fiber, it combines cutting-edge 3D visuals with a robust administrative backendpowered by Supabase.
+Elementra is a high-fidelity, futuristic web platform designed for premium brand management and client project tracking. Built with React, Vite, and React Three Fiber, it combines cutting-edge 3D visuals with a robust administrative backendpowered by Supabase.
 
 ---
 
 ## 💎 Design Philosophy
-Elmentra utilizes a **"Deep Space Modern"** aesthetic, characterized by:
+Elementra utilizes a **"Deep Space Modern"** aesthetic, characterized by:
 - **Futuristic 3D Elements**: Interactive particle waves and holographic cores.
 - **Glassmorphism**: Translucent card surfaces with refined blur effects.
 - **Mesh Gradients**: A dynamic background system blending Orange, Sky Blue, and Dark Blue.
@@ -70,7 +70,7 @@ Elmentra utilizes a **"Deep Space Modern"** aesthetic, characterized by:
 ---
 
 ## 📱 Mobile Responsiveness
-Elmentra is designed to be fully functional on all screen sizes:
+Elementra is designed to be fully functional on all screen sizes:
 - **Desktop**: Full sidebar navigation and wide-grid sections.
 - **Mobile**: Sticky bottom-navigation, mobile-optimized headers, and vertical timeline layouts.
 
@@ -79,4 +79,4 @@ This project is for demonstration and production-ready brand management. All rig
 
 ---
 
-**Developed with ❤️ by the Elmentra Team**
+**Developed with ❤️ by the Elementra Team**
