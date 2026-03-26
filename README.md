@@ -29,7 +29,7 @@ Elmentra utilizes a **"Deep Space Modern"** aesthetic, characterized by:
 ### Installation
 1.  **Clone the Repository**:
     ```bash
-    git clone https://github.com/your-username/elmentra.git
+    https://github.com/Maady321/Elementra.git
     cd elmentra
     ```
 2.  **Install Dependencies**:
