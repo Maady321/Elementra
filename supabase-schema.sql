@@ -120,3 +120,37 @@ BEGIN
   RETURN v_hash = crypt(p_password, v_hash);
 END;
 $$;
+-- Leads Table for Chatbot / Anonymous Inquiry
+CREATE TABLE IF NOT EXISTS leads (
+  id BIGSERIAL PRIMARY KEY,
+  name TEXT,
+  email TEXT,
+  business_type TEXT,
+  pages INTEGER,
+  plan TEXT,
+  status TEXT NOT NULL DEFAULT 'new', -- new, contacted, closed
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Messages Table for Lead Chats
+CREATE TABLE IF NOT EXISTS lead_messages (
+  id BIGSERIAL PRIMARY KEY,
+  lead_id BIGINT REFERENCES leads(id) ON DELETE CASCADE,
+  sender TEXT NOT NULL, -- user, bot, admin
+  message TEXT NOT NULL,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Enable RLS
+ALTER TABLE leads ENABLE ROW LEVEL SECURITY;
+ALTER TABLE lead_messages ENABLE ROW LEVEL SECURITY;
+
+-- Policies for anon usage (chatbot)
+CREATE POLICY "Public can insert leads" ON leads FOR INSERT WITH CHECK (true);
+CREATE POLICY "Public can view own lead" ON leads FOR SELECT USING (true);
+CREATE POLICY "Public can insert lead messages" ON lead_messages FOR INSERT WITH CHECK (true);
+CREATE POLICY "Public can view lead messages" ON lead_messages FOR SELECT USING (true);
+
+-- Admin policies (assuming admin has access to all)
+CREATE POLICY "Admin full access leads" ON leads FOR ALL USING (true);
+CREATE POLICY "Admin full access lead messages" ON lead_messages FOR ALL USING (true);

@@ -135,7 +135,7 @@ export default function Home() {
                 Get Free Demo
               </Link>
               <a 
-                href="https://wa.me/919999999999?text=Hi! I want a website for my business" 
+                href="https://wa.me/919746520910?text=Hi! I want a website for my business" 
                 target="_blank" 
                 rel="noopener noreferrer" 
                 className="btn btn-whatsapp btn-lg"
@@ -288,7 +288,7 @@ export default function Home() {
                 </ul>
 
                 <a
-                  href={`https://wa.me/919999999999?text=Hi! I'm interested in the ${plan.name} plan (${plan.price})`}
+                  href={`https://wa.me/919746520910?text=Hi! I'm interested in the ${plan.name} plan (${plan.price})`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className={`btn ${plan.popular ? 'btn-primary' : 'btn-secondary'}`}
@@ -349,7 +349,7 @@ export default function Home() {
 
             <div className="cta__actions">
               <a
-                href="https://wa.me/919999999999?text=Hi! I want to start building my website"
+                href="https://wa.me/919746520910?text=Hi! I want to start building my website"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="btn btn-whatsapp btn-lg"
@@ -378,7 +378,7 @@ export default function Home() {
               <a href="/#portfolio">Portfolio</a>
               <Link to="/login">Client Login</Link>
               <a
-                href="https://wa.me/919999999999"
+                href="https://wa.me/919746520910"
                 target="_blank"
                 rel="noopener noreferrer"
               >

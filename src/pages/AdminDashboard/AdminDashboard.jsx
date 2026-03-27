@@ -39,43 +39,85 @@ export default function AdminDashboard() {
   // New client form
   const [newClient, setNewClient] = useState({
     name: '', email: '', project: '', plan: 'Basic', pages: 1, theme: 'Modern', amount: 1499,
+    features: { contactForm: false, whatsapp: false, booking: false }
   });
 
   // New update form
-  const [newUpdate, setNewUpdate] = useState({ title: '', description: '' });
+  const [newUpdate, setNewUpdate] = useState({ title: '', description: '', image: null });
+  const [isUploadingUpdate, setIsUploadingUpdate] = useState(false);
 
-  // Socket chat handling
+  // Progress steps
+  const [progressSteps, setProgressSteps] = useState([]);
+  const [newStepLabel, setNewStepLabel] = useState('');
+
   const [chatMessages, setChatMessages] = useState([]);
   const [chatImage, setChatImage] = useState(null);
+
+  // Search & Filters
+  const [searchQuery, setSearchQuery] = useState('');
+  const [statusFilter, setStatusFilter] = useState('all');
+  const [paymentFilter, setPaymentFilter] = useState('all');
+  const [selectedIds, setSelectedIds] = useState([]);
+
+  const [leads, setLeads] = useState([]);
+  const [selectedLead, setSelectedLead] = useState(null);
+  const [leadMessages, setLeadMessages] = useState([]);
+  const [leadReply, setLeadReply] = useState('');
+
+  // Load Leads from Supabase
+  const loadLeads = async () => {
+    try {
+      const { data, error } = await supabase.from('leads').select('*').order('created_at', { ascending: false });
+      if (error) throw error;
+      setLeads(data);
+    } catch (err) {
+      console.error('Error loading leads:', err.message);
+    }
+  };
 
   // Load Clients from Supabase
   const loadClients = async () => {
     try {
-      const { data, error } = await supabase.from('projects').select('*').order('created_at', { ascending: false });
+      const { data, error } = await supabase
+        .from('projects')
+        .select(`
+          *,
+          progress_steps(*)
+        `)
+        .order('created_at', { ascending: false });
+      
       if (error) throw error;
 
-      // Group/fetch updates locally or via a separate query
       const { data: updatesData } = await supabase.from('project_updates').select('*');
 
-      const formatted = data.map(p => ({
-        id: p.id,
-        name: p.client_name,
-        email: p.email || 'N/A',
-        project: p.project_name,
-        plan: p.plan,
-        pages: p.num_pages,
-        status: p.status,
-        progress: { in_progress: 25, design: 50, development: 75, review: 90, completed: 100 }[p.status] || 0,
-        theme: p.theme,
-        paid: p.paid,
-        amount: p.amount,
-        startDate: new Date(p.created_at).toISOString().split('T')[0],
-        updates: (updatesData || []).filter(u => u.project_id === p.id).map(u => ({
-          ...u,
-          date: new Date(u.created_at).toISOString().split('T')[0]
-        })),
-        comments: [], // Comments handled by socket mostly or could be fetched
-      }));
+      const formatted = data.map(p => {
+        const steps = p.progress_steps || [];
+        const completedCount = steps.filter(s => s.status === 'completed').length;
+        const currentCount = steps.findIndex(s => s.status === 'current') >= 0 ? 0.5 : 0;
+        const calculatedProgress = steps.length > 0 
+          ? Math.round(((completedCount + currentCount) / steps.length) * 100) 
+          : 0;
+
+        return {
+          id: p.id,
+          name: p.client_name,
+          email: p.email || 'N/A',
+          project: p.project_name,
+          plan: p.plan,
+          pages: p.num_pages,
+          status: p.status,
+          progress: calculatedProgress,
+          theme: p.theme,
+          paid: p.paid,
+          amount: p.amount,
+          features: p.features || { contactForm: false, whatsapp: false, booking: false },
+          startDate: new Date(p.created_at).toISOString().split('T')[0],
+          updates: (updatesData || []).filter(u => u.project_id === p.id).map(u => ({
+            ...u,
+            date: new Date(u.created_at).toISOString().split('T')[0]
+          })),
+        };
+      });
       setClients(formatted);
     } catch (err) {
       console.error('Error loading clients:', err.message);
@@ -88,6 +130,7 @@ export default function AdminDashboard() {
       navigate('/admin');
     } else {
       loadClients();
+      loadLeads();
     }
   }, [navigate]);
 
@@ -110,24 +153,160 @@ export default function AdminDashboard() {
     };
     loadComments();
 
-    const channel = supabase.channel(`admin_project_${selectedClient.id}`)
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'comments', filter: `project_id=eq.${selectedClient.id}` }, (payload) => {
-        const c = payload.new;
-        setChatMessages(prev => [...prev, {
-          id: c.id,
-          text: c.text,
-          imageUrl: c.image_url,
-          author: c.is_client ? selectedClient.name : 'Admin',
-          date: new Date(c.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-          isClient: c.is_client
-        }]);
+    const loadProgressSteps = async () => {
+      const { data } = await supabase.from('progress_steps')
+        .select('*')
+        .eq('project_id', selectedClient.id)
+        .order('sort_order', { ascending: true });
+      if (data) setProgressSteps(data);
+    };
+    loadProgressSteps();
+
+    // 1. Comments real-time
+    const commentChannel = supabase.channel(`admin_project_${selectedClient.id}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'comments', filter: `project_id=eq.${selectedClient.id}` }, (payload) => {
+        if (payload.eventType === 'INSERT') {
+          const c = payload.new;
+          setChatMessages(prev => [...prev, {
+            id: c.id,
+            text: c.text,
+            imageUrl: c.image_url,
+            author: c.is_client ? selectedClient.name : 'Admin',
+            date: new Date(c.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+            isClient: c.is_client
+          }]);
+        }
+      })
+      .subscribe();
+
+    // 2. Project updates real-time
+    const updateChannel = supabase.channel(`admin_updates_${selectedClient.id}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'project_updates', filter: `project_id=eq.${selectedClient.id}` }, (payload) => {
+        if(payload.eventType === 'INSERT') {
+           const u = payload.new;
+           const formatted = { ...u, date: new Date(u.created_at).toISOString().split('T')[0] };
+           setSelectedClient(prev => ({ ...prev, updates: [formatted, ...prev.updates] }));
+           setClients(prev => prev.map(c => c.id === selectedClient.id ? { ...c, updates: [formatted, ...c.updates] } : c));
+        }
+      })
+      .subscribe();
+
+    // 3. Progress steps real-time
+    const progressChannel = supabase.channel(`admin_progress_${selectedClient.id}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'progress_steps', filter: `project_id=eq.${selectedClient.id}` }, () => {
+        loadProgressSteps();
+        loadClients(); // Reload clients to update overall progress % in list
       })
       .subscribe();
 
     return () => {
-      supabase.removeChannel(channel);
+      supabase.removeChannel(commentChannel);
+      supabase.removeChannel(updateChannel);
+      supabase.removeChannel(progressChannel);
     };
   }, [selectedClient]);
+
+  // Global project subscription
+  useEffect(() => {
+    const projectChannel = supabase.channel('admin_projects_all')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'projects' }, () => {
+         loadClients();
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(projectChannel);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!selectedLead) return;
+    
+    // Load lead messages
+    const loadLeadMsgs = async () => {
+      const { data } = await supabase.from('lead_messages').select('*').eq('lead_id', selectedLead.id).order('created_at', { ascending: true });
+      if (data) setLeadMessages(data);
+    };
+    loadLeadMsgs();
+
+    const channel = supabase.channel(`admin_lead_${selectedLead.id}`)
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'lead_messages', filter: `lead_id=eq.${selectedLead.id}` }, (payload) => {
+        setLeadMessages(prev => [...prev, payload.new]);
+      })
+      .subscribe();
+    
+    return () => supabase.removeChannel(channel);
+  }, [selectedLead]);
+
+  useEffect(() => {
+    const leadChannel = supabase.channel('admin_leads_all')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'leads' }, () => {
+        loadLeads();
+      })
+      .subscribe();
+    return () => supabase.removeChannel(leadChannel);
+  }, []);
+
+  const handleSendLeadReply = async (e) => {
+    e.preventDefault();
+    if (!selectedLead || !leadReply.trim()) return;
+    try {
+      await supabase.from('lead_messages').insert([{
+        lead_id: selectedLead.id,
+        sender: 'admin',
+        message: leadReply
+      }]);
+      setLeadReply('');
+    } catch (err) {
+      console.error('Reply error:', err.message);
+    }
+  };
+
+  const handleUpdateLeadStatus = async (id, status) => {
+    try {
+      await supabase.from('leads').update({ status }).eq('id', id);
+      setLeads(leads.map(l => l.id === id ? { ...l, status } : l));
+      if (selectedLead?.id === id) setSelectedLead({ ...selectedLead, status });
+    } catch (err) {
+      console.error('Status error:', err.message);
+    }
+  };
+
+  const convertLeadToProject = async (lead) => {
+    if (confirm(`Convert ${lead.name}'s inquiry to an active project?`)) {
+      try {
+        const { data: project, error: pError } = await supabase.from('projects').insert([{
+           client_name: lead.name,
+           email: lead.email,
+           project_name: lead.business_type || 'New Project',
+           plan: lead.plan || 'Basic',
+           num_pages: lead.pages || 1,
+           amount: { Basic: 1499, Standard: 3499, Premium: 5999 }[lead.plan] || 1499,
+           status: 'in_progress'
+        }]).select().single();
+
+        if (pError) throw pError;
+
+        // Add default milestones
+        const defaultSteps = [
+          { project_id: project.id, step_name: 'Design Phase', sort_order: 0 },
+          { project_id: project.id, step_name: 'Development', sort_order: 1 },
+          { project_id: project.id, step_name: 'Final Review', sort_order: 2 }
+        ];
+        await supabase.from('progress_steps').insert(defaultSteps);
+
+        // Update lead status to closed
+        await supabase.from('leads').update({ status: 'closed' }).eq('id', lead.id);
+
+        alert('Project created successfully! You can find it in All Clients tab.');
+        setActiveSection('clients');
+        setSelectedClient({ ...project, updates: [], progress: 0, startDate: new Date().toISOString().split('T')[0] });
+        loadLeads();
+      } catch (err) {
+        console.error('Conversion failed:', err.message);
+      }
+    }
+  };
 
   const handleLogout = () => {
     localStorage.removeItem('elmentra_admin');
@@ -152,6 +331,7 @@ export default function AdminDashboard() {
         num_pages: newClient.pages,
         theme: newClient.theme,
         amount: newClient.amount,
+        features: newClient.features,
         status: 'in_progress',
         paid: false
       }]).select().single();
@@ -208,11 +388,18 @@ export default function AdminDashboard() {
   const handleAddUpdate = async (e) => {
     e.preventDefault();
     if (!selectedClient) return;
+    setIsUploadingUpdate(true);
     try {
+      let finalImg = newUpdate.image;
+      if (newUpdate.image instanceof File) {
+        finalImg = await uploadToStorage(newUpdate.image);
+      }
+
       const { data, error } = await supabase.from('project_updates').insert([{
         project_id: selectedClient.id,
         title: newUpdate.title,
-        description: newUpdate.description
+        description: newUpdate.description,
+        image: finalImg
       }]).select().single();
       
       if (error) throw error;
@@ -228,21 +415,101 @@ export default function AdminDashboard() {
           : c
       ));
       setSelectedClient({ ...selectedClient, updates: [formattedUpdate, ...selectedClient.updates] });
-      setNewUpdate({ title: '', description: '' });
+      setNewUpdate({ title: '', description: '', image: null });
       setShowAddUpdate(false);
     } catch (err) {
       console.error('Error adding update:', err.message);
+      alert('Failed to add update.');
+    } finally {
+      setIsUploadingUpdate(false);
     }
   };
 
-  const handleImageUpload = (e) => {
+  const handleAddProgressStep = async (e) => {
+    e.preventDefault();
+    if (!newStepLabel.trim() || !selectedClient) return;
+    try {
+      const { data, error } = await supabase.from('progress_steps').insert([{
+        project_id: selectedClient.id,
+        step_name: newStepLabel,
+        status: 'pending',
+        sort_order: progressSteps.length
+      }]).select().single();
+
+      if (error) throw error;
+      setProgressSteps([...progressSteps, data]);
+      setNewStepLabel('');
+    } catch (err) {
+      console.error('Add Step Error:', err.message);
+    }
+  };
+
+  const handleToggleStep = async (stepId, currentStatus) => {
+    const nextStatus = { pending: 'current', current: 'completed', completed: 'pending' }[currentStatus];
+    try {
+      const { error } = await supabase.from('progress_steps').update({ 
+        status: nextStatus,
+        completed_at: nextStatus === 'completed' ? new Date().toISOString() : null
+      }).eq('id', stepId);
+      if (error) throw error;
+      setProgressSteps(progressSteps.map(s => s.id === stepId ? { ...s, status: nextStatus } : s));
+    } catch (err) {
+      console.error('Toggle Step Error:', err.message);
+    }
+  };
+
+  const handleDeleteStep = async (stepId) => {
+    try {
+      await supabase.from('progress_steps').delete().eq('id', stepId);
+      setProgressSteps(progressSteps.filter(s => s.id !== stepId));
+    } catch (err) {
+      console.error('Delete Step Error:', err.message);
+    }
+  };
+
+  const handleToggleFeature = async (featureName) => {
+    if (!selectedClient) return;
+    const updatedFeatures = { ...selectedClient.features, [featureName]: !selectedClient.features[featureName] };
+    try {
+      const { error } = await supabase.from('projects').update({ features: updatedFeatures }).eq('id', selectedClient.id);
+      if (error) throw error;
+      setSelectedClient({ ...selectedClient, features: updatedFeatures });
+      setClients(clients.map(c => c.id === selectedClient.id ? { ...c, features: updatedFeatures } : c));
+    } catch (err) {
+      console.error('Toggle Feature Error:', err.message);
+    }
+  };
+
+  const uploadToStorage = async (file) => {
+    const fileExt = file.name.split('.').pop();
+    const fileName = `${Math.random()}.${fileExt}`;
+    const filePath = `uploads/${fileName}`;
+
+    const { error: uploadError } = await supabase.storage
+      .from('project-images')
+      .upload(filePath, file);
+
+    if (uploadError) throw uploadError;
+
+    const { data: { publicUrl } } = supabase.storage
+      .from('project-images')
+      .getPublicUrl(filePath);
+
+    return publicUrl;
+  };
+
+  const handleImageUpload = async (e) => {
     const file = e.target.files[0];
     if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setChatImage(reader.result); // Save Base64 for the chat
-      };
-      reader.readAsDataURL(file);
+      try {
+        setChatImage('uploading...'); // Temporal placeholder
+        const url = await uploadToStorage(file);
+        setChatImage(url);
+      } catch (err) {
+        console.error('Upload Error:', err.message);
+        setChatImage(null);
+        alert('Failed to upload image. Please check your storage settings.');
+      }
     }
   };
 
@@ -280,9 +547,33 @@ export default function AdminDashboard() {
 
   const sidebarItems = [
     { id: 'overview', label: 'Overview', icon: <HiOutlineChartBar /> },
+    { id: 'leads', label: 'Leads', icon: <HiOutlineChatAlt /> },
     { id: 'clients', label: 'All Clients', icon: <HiOutlineUsers /> },
     { id: 'projects', label: 'Projects', icon: <HiOutlineBriefcase /> },
+    { id: 'settings', label: 'Settings', icon: <HiOutlineCog /> },
   ];
+
+  const filteredClients = clients.filter(c => {
+    const matchesSearch = c.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
+                          c.project.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                          c.email.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesStatus = statusFilter === 'all' || c.status === statusFilter;
+    const matchesPayment = paymentFilter === 'all' || (paymentFilter === 'paid' ? c.paid : !c.paid);
+    return matchesSearch && matchesStatus && matchesPayment;
+  });
+
+  const handleBulkDelete = async () => {
+    if (selectedIds.length === 0) return;
+    if (confirm(`Are you sure you want to delete ${selectedIds.length} projects?`)) {
+      try {
+        await supabase.from('projects').delete().in('id', selectedIds);
+        setClients(clients.filter(c => !selectedIds.includes(c.id)));
+        setSelectedIds([]);
+      } catch (err) {
+        console.error('Bulk Delete Error:', err.message);
+      }
+    }
+  };
 
   return (
     <div className="admin">
@@ -355,16 +646,47 @@ export default function AdminDashboard() {
             </p>
           </div>
 
-          {activeSection === 'clients' && !selectedClient && (
-            <button onClick={() => setShowAddClient(true)} className="btn btn-primary btn-sm">
-              <HiOutlinePlus /> Add Client
-            </button>
+          {activeSection !== 'overview' && activeSection !== 'settings' && !selectedClient && (
+            <div className="admin__header-search">
+              <input 
+                type="text" 
+                placeholder="Search clients or projects..." 
+                className="form-input"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+              />
+              <select 
+                className="form-input" 
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value)}
+              >
+                <option value="all">All Status</option>
+                <option value="in_progress">In Progress</option>
+                <option value="design">Design</option>
+                <option value="development">Development</option>
+                <option value="review">Review</option>
+                <option value="completed">Completed</option>
+              </select>
+            </div>
           )}
-          {selectedClient && (
-            <button onClick={() => setSelectedClient(null)} className="btn btn-secondary btn-sm">
-              ← Back to Clients
-            </button>
-          )}
+
+          <div className="admin__header-actions">
+            {selectedIds.length > 0 && (
+              <button onClick={handleBulkDelete} className="btn btn-danger btn-sm">
+                <HiOutlineTrash /> Delete ({selectedIds.length})
+              </button>
+            )}
+            {activeSection === 'clients' && !selectedClient && (
+              <button onClick={() => setShowAddClient(true)} className="btn btn-primary btn-sm">
+                <HiOutlinePlus /> Add Client
+              </button>
+            )}
+            {selectedClient && (
+              <button onClick={() => setSelectedClient(null)} className="btn btn-secondary btn-sm">
+                ← Back
+              </button>
+            )}
+          </div>
         </header>
 
         <div className="admin__content">
@@ -422,7 +744,7 @@ export default function AdminDashboard() {
                       </tr>
                     </thead>
                     <tbody>
-                      {clients.slice(0, 5).map((client) => (
+                      {filteredClients.slice(0, 5).map((client) => (
                         <tr key={client.id} onClick={() => { setSelectedClient(client); setActiveSection('clients'); }}>
                           <td>
                             <div className="admin__client-cell">
@@ -450,11 +772,134 @@ export default function AdminDashboard() {
             </div>
           )}
 
+          {/* ===== SETTINGS SECTION ===== */}
+          {activeSection === 'settings' && (
+            <div className="admin__settings animate-fade-in">
+               <div className="card admin__settings-card">
+                  <h2 className="admin__card-title">Admin Account Settings</h2>
+                  <p className="admin__page-subtitle">Manage your credentials and security</p>
+                  
+                  <div className="form-group" style={{marginTop: '2rem'}}>
+                    <label className="form-label">Username</label>
+                    <input type="text" className="form-input" disabled value={JSON.parse(localStorage.getItem('elmentra_admin'))?.username} />
+                  </div>
+
+                  <hr style={{margin: '2rem 0', opacity: 0.1}}/>
+                  
+                  <div className="admin__settings-danger">
+                     <h3>Security</h3>
+                     <p>Changes to security settings require re-authentication.</p>
+                     <button className="btn btn-secondary" onClick={() => alert('Password reset link sent to admin email (simulated).')}>Change Password</button>
+                  </div>
+               </div>
+            </div>
+          )}
+
+          {/* ===== LEADS SECTION ===== */}
+          {activeSection === 'leads' && (
+            <div className="admin__leads animate-fade-in" style={{ display: 'grid', gridTemplateColumns: selectedLead ? '1fr 1fr' : '1fr', gap: '1.5rem' }}>
+              <div className="admin__leads-list card">
+                <div className="admin__recent-header">
+                  <h2 className="admin__card-title">Inbound Leads</h2>
+                </div>
+                <div className="admin__table-wrap">
+                  <table className="admin__table">
+                    <thead>
+                      <tr>
+                        <th>Recipient</th>
+                        <th>Business</th>
+                        <th>Status</th>
+                        <th>Date</th>
+                        <th>Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {leads.map(lead => (
+                        <tr key={lead.id} onClick={() => setSelectedLead(lead)} className={selectedLead?.id === lead.id ? 'admin__table-row--selected' : ''}>
+                          <td>
+                             <div className="admin__client-cell">
+                                <div className="admin__client-avatar" style={{background: '#4ade80'}}>{(lead.name || 'L')[0]}</div>
+                                <div>
+                                   <span className="admin__client-name">{lead.name || 'Anonymous'}</span>
+                                   <span className="admin__client-email">{lead.plan || 'No Plan'}</span>
+                                </div>
+                             </div>
+                          </td>
+                          <td>{lead.business_type || 'N/A'}</td>
+                          <td>
+                             <select 
+                               value={lead.status} 
+                               onChange={(e) => handleUpdateLeadStatus(lead.id, e.target.value)}
+                               className="admin__status-select"
+                               onClick={(e) => e.stopPropagation()}
+                             >
+                               <option value="new">New</option>
+                               <option value="contacted">Contacted</option>
+                               <option value="closed">Closed</option>
+                             </select>
+                          </td>
+                          <td>{new Date(lead.created_at).toLocaleDateString()}</td>
+                          <td>
+                             <button 
+                               className="btn btn-primary btn-sm"
+                               onClick={(e) => { e.stopPropagation(); convertLeadToProject(lead); }}
+                             >
+                               Convert
+                             </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              {selectedLead && (
+                <div className="admin__detail-card card animate-fade-in">
+                   <div className="admin__card-header-row">
+                      <h3 className="admin__card-title">Chat with {selectedLead.name || 'Lead'}</h3>
+                      <button onClick={() => setSelectedLead(null)} className="admin__modal-close"><HiOutlineX /></button>
+                   </div>
+
+                   <div className="admin__chat-messages" style={{ height: '400px' }}>
+                      {leadMessages.map(m => (
+                        <div key={m.id} className={`admin__chat-msg admin__chat-msg--${m.sender === 'admin' ? 'admin' : 'client'}`}>
+                           <div className="admin__chat-bubble">
+                              <p>{m.message}</p>
+                              <span style={{ fontSize: '10px', opacity: 0.5, marginTop: '4px', display: 'block' }}>
+                                 {new Date(m.created_at).toLocaleTimeString()}
+                              </span>
+                           </div>
+                        </div>
+                      ))}
+                   </div>
+
+                   <form onSubmit={handleSendLeadReply} className="admin__reply-form">
+                      <input 
+                        type="text" 
+                        value={leadReply} 
+                        onChange={(e) => setLeadReply(e.target.value)}
+                        placeholder="Type a reply to lead..." 
+                        className="form-input"
+                      />
+                      <button type="submit" className="btn btn-primary">Send</button>
+                   </form>
+
+                   <div className="admin__detail-meta" style={{ marginTop: '1.5rem', borderTop: '1px solid rgba(255,255,255,0.05)', paddingTop: '1rem' }}>
+                      <div><span>Business Type:</span> <strong>{selectedLead.business_type}</strong></div>
+                      <div><span>Pages:</span> <strong>{selectedLead.pages}</strong></div>
+                      <div><span>Plan:</span> <strong>{selectedLead.plan}</strong></div>
+                   </div>
+                </div>
+              )}
+            </div>
+          )}
+
           {/* ===== CLIENTS LIST ===== */}
           {activeSection === 'clients' && !selectedClient && (
             <div className="admin__clients animate-fade-in">
               <div className="admin__clients-grid">
-                {clients.map((client) => (
+                {filteredClients.map((client) => (
                   <div key={client.id} className="admin__client-card card">
                     <div className="admin__client-card-header">
                       <div className="admin__client-cell">
@@ -521,13 +966,13 @@ export default function AdminDashboard() {
             </div>
           )}
 
-          {/* ===== CLIENT DETAIL ===== */}
+          {/* ===== CLIENT DETAIL VIEW ===== */}
           {activeSection === 'clients' && selectedClient && (
             <div className="admin__client-detail-view animate-fade-in">
-              {/* Status & Progress */}
+              {/* Status & Features Row */}
               <div className="admin__detail-row">
                 <div className="admin__detail-card card">
-                  <h3 className="admin__card-title">Project Status</h3>
+                  <h3 className="admin__card-title">Project Status & Config</h3>
 
                   <div className="admin__status-selector">
                     {['in_progress', 'design', 'development', 'review', 'completed'].map((status) => (
@@ -542,6 +987,22 @@ export default function AdminDashboard() {
                         {status.replace('_', ' ').replace(/\b\w/g, (c) => c.toUpperCase())}
                       </button>
                     ))}
+                  </div>
+
+                  <div className="admin__features-management" style={{marginTop: '1.5rem'}}>
+                    <h4 className="admin__small-title">Active Features</h4>
+                    <div className="admin__features-grid">
+                      {Object.keys(selectedClient.features).map(feature => (
+                        <label key={feature} className="admin__feature-check">
+                          <input 
+                            type="checkbox" 
+                            checked={selectedClient.features[feature]} 
+                            onChange={() => handleToggleFeature(feature)}
+                          />
+                          <span>{feature.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase())}</span>
+                        </label>
+                      ))}
+                    </div>
                   </div>
 
                   <div className="admin__detail-meta">
@@ -563,100 +1024,138 @@ export default function AdminDashboard() {
                   </div>
                 </div>
 
-                {/* Updates */}
+                {/* Progress Steps Management */}
                 <div className="admin__detail-card card">
                   <div className="admin__card-header-row">
-                    <h3 className="admin__card-title">Project Updates</h3>
-                    <button onClick={() => setShowAddUpdate(true)} className="btn btn-primary btn-sm">
-                      <HiOutlinePlus /> Add Update
-                    </button>
+                    <h3 className="admin__card-title">Detailed Milestones</h3>
+                    <span className="badge badge-primary">{progressSteps.filter(s => s.status === 'completed').length}/{progressSteps.length}</span>
                   </div>
 
-                  <div className="admin__updates-list">
-                    {selectedClient.updates.length === 0 ? (
-                      <p className="admin__empty">No updates yet. Add one to keep the client informed.</p>
-                    ) : (
-                      selectedClient.updates.map((update) => (
-                        <div key={update.id} className="admin__update-item">
-                          <div className="admin__update-dot"></div>
-                          <div>
-                            <strong>{update.title}</strong>
-                            <p>{update.description}</p>
-                            <span className="admin__update-date">{update.date}</span>
+                  <div className="admin__steps-manager">
+                    <form onSubmit={handleAddProgressStep} className="admin__step-form">
+                      <input 
+                        type="text" 
+                        placeholder="New milestone..." 
+                        className="form-input"
+                        value={newStepLabel}
+                        onChange={(e) => setNewStepLabel(e.target.value)}
+                      />
+                      <button type="submit" className="btn btn-primary btn-sm"><HiOutlinePlus /></button>
+                    </form>
+
+                    <div className="admin__steps-list">
+                      {progressSteps.length === 0 ? (
+                        <p className="admin__empty">No milestones added yet.</p>
+                      ) : (
+                        progressSteps.map(step => (
+                          <div key={step.id} className={`admin__step-item admin__step-item--${step.status}`}>
+                            <button 
+                              className="admin__step-status-btn"
+                              onClick={() => handleToggleStep(step.id, step.status)}
+                            >
+                              {step.status === 'completed' ? <HiOutlineCheck /> : step.status === 'current' ? <HiOutlineClock /> : null}
+                            </button>
+                            <span className="admin__step-label">{step.step_name}</span>
+                            <button className="admin__step-delete" onClick={() => handleDeleteStep(step.id)}>
+                              <HiOutlineX />
+                            </button>
                           </div>
-                        </div>
-                      ))
-                    )}
+                        ))
+                      )}
+                    </div>
                   </div>
                 </div>
               </div>
 
-              {/* Comments */}
-              <div className="admin__detail-card card">
-                <h3 className="admin__card-title">
-                  <HiOutlineChatAlt /> Client Feedback & Reply
-                </h3>
+              {/* Updates & Chat */}
+              <div className="admin__detail-row">
+                 {/* Updates */}
+                  <div className="admin__detail-card card">
+                    <div className="admin__card-header-row">
+                      <h3 className="admin__card-title">Project Updates</h3>
+                      <button onClick={() => setShowAddUpdate(true)} className="btn btn-primary btn-sm">
+                        <HiOutlinePlus /> Add Update
+                      </button>
+                    </div>
 
-                <div className="admin__chat-messages">
-                  {chatMessages.length === 0 ? (
-                    <p className="admin__empty">No comments yet. Start a conversation!</p>
-                  ) : (
-                    chatMessages.map((comment) => (
-                      <div
-                        key={comment.id}
-                        className={`admin__chat-msg ${comment.isClient ? 'admin__chat-msg--client' : 'admin__chat-msg--admin'}`}
-                      >
-                        <div className="admin__chat-avatar">
-                          {comment.isClient ? '👤' : '⚡'}
-                        </div>
-                        <div className="admin__chat-bubble">
-                          <div className="admin__chat-meta">
-                            <strong>{comment.author}</strong>
-                            <span>{comment.date}</span>
+                    <div className="admin__updates-list">
+                      {selectedClient.updates.length === 0 ? (
+                        <p className="admin__empty">No updates yet.</p>
+                      ) : (
+                        selectedClient.updates.map((update) => (
+                          <div key={update.id} className="admin__update-item">
+                            <div className="admin__update-dot"></div>
+                            <div>
+                              <strong>{update.title}</strong>
+                              <p>{update.description}</p>
+                              {update.image && <img src={update.image} alt="update" className="admin__update-img" style={{maxHeight: '100px', borderRadius: '8px', marginTop: '8px'}} />}
+                              <span className="admin__update-date">{update.date}</span>
+                            </div>
                           </div>
-                          {comment.text && <p>{comment.text}</p>}
-                          {comment.imageUrl && (
-                            <img 
-                              src={comment.imageUrl} 
-                              alt="Upload preview" 
-                              className="admin__chat-image" 
-                            />
-                          )}
-                        </div>
-                      </div>
-                    ))
-                  )}
-                </div>
-
-                {chatImage && (
-                  <div className="admin__chat-image-preview-container">
-                    <img src={chatImage} alt="preview" className="admin__chat-image-preview" />
-                    <button type="button" onClick={() => setChatImage(null)} className="admin__modal-close">
-                      <HiOutlineX />
-                    </button>
+                        ))
+                      )}
+                    </div>
                   </div>
-                )}
 
-                <form onSubmit={handleAdminReply} className="admin__reply-form">
-                  <label htmlFor="file-upload" className="admin__attach-btn">
-                    <HiOutlinePhotograph />
-                  </label>
-                  <input
-                    id="file-upload"
-                    type="file"
-                    accept="image/*"
-                    style={{ display: 'none' }}
-                    onChange={handleImageUpload}
-                  />
-                  <input
-                    type="text"
-                    className="form-input"
-                    placeholder="Type your reply to the client..."
-                    value={adminReply}
-                    onChange={(e) => setAdminReply(e.target.value)}
-                  />
-                  <button type="submit" className="btn btn-primary">Send</button>
-                </form>
+                  {/* Chat */}
+                  <div className="admin__detail-card card">
+                    <h3 className="admin__card-title">
+                      <HiOutlineChatAlt /> Communication
+                    </h3>
+
+                    <div className="admin__chat-messages">
+                      {chatMessages.length === 0 ? (
+                        <p className="admin__empty">No comments yet.</p>
+                      ) : (
+                        chatMessages.map((comment) => (
+                          <div
+                            key={comment.id}
+                            className={`admin__chat-msg ${comment.isClient ? 'admin__chat-msg--client' : 'admin__chat-msg--admin'}`}
+                          >
+                            <div className="admin__chat-avatar">
+                              {comment.isClient ? '👤' : '⚡'}
+                            </div>
+                            <div className="admin__chat-bubble">
+                              <div className="admin__chat-meta">
+                                <strong>{comment.author}</strong>
+                                <span>{comment.date}</span>
+                              </div>
+                              {comment.text && <p>{comment.text}</p>}
+                              {comment.imageUrl && (
+                                <img 
+                                  src={comment.imageUrl} 
+                                  alt="Upload preview" 
+                                  className="admin__chat-image" 
+                                />
+                              )}
+                            </div>
+                          </div>
+                        ))
+                      )}
+                    </div>
+
+                    <form onSubmit={handleAdminReply} className="admin__reply-form">
+                      <label htmlFor="file-upload" className="admin__attach-btn">
+                        <HiOutlinePhotograph />
+                      </label>
+                      <input
+                        id="file-upload"
+                        type="file"
+                        accept="image/*"
+                        style={{ display: 'none' }}
+                        onChange={handleImageUpload}
+                      />
+                      <input
+                        type="text"
+                        className="form-input"
+                        placeholder={chatImage === 'uploading...' ? 'Uploading image...' : "Type reply..."}
+                        value={adminReply}
+                        onChange={(e) => setAdminReply(e.target.value)}
+                        disabled={chatImage === 'uploading...'}
+                      />
+                      <button type="submit" className="btn btn-primary" disabled={chatImage === 'uploading...'}>Send</button>
+                    </form>
+                  </div>
               </div>
             </div>
           )}
@@ -668,10 +1167,19 @@ export default function AdminDashboard() {
                 <table className="admin__table admin__table--full">
                   <thead>
                     <tr>
+                      <th>
+                        <input 
+                          type="checkbox" 
+                          onChange={(e) => {
+                            if (e.target.checked) setSelectedIds(filteredClients.map(c => c.id));
+                            else setSelectedIds([]);
+                          }}
+                          checked={selectedIds.length > 0 && selectedIds.length === filteredClients.length}
+                        />
+                      </th>
                       <th>Client</th>
                       <th>Project</th>
                       <th>Plan</th>
-                      <th>Pages</th>
                       <th>Progress</th>
                       <th>Status</th>
                       <th>Payment</th>
@@ -679,8 +1187,18 @@ export default function AdminDashboard() {
                     </tr>
                   </thead>
                   <tbody>
-                    {clients.map((client) => (
-                      <tr key={client.id}>
+                    {filteredClients.map((client) => (
+                      <tr key={client.id} className={selectedIds.includes(client.id) ? 'admin__table-row--selected' : ''}>
+                        <td>
+                          <input 
+                            type="checkbox" 
+                            checked={selectedIds.includes(client.id)}
+                            onChange={(e) => {
+                              if (e.target.checked) setSelectedIds([...selectedIds, client.id]);
+                              else setSelectedIds(selectedIds.filter(id => id !== client.id));
+                            }}
+                          />
+                        </td>
                         <td>
                           <div className="admin__client-cell">
                             <div className="admin__client-avatar">{client.name[0]}</div>
@@ -689,7 +1207,6 @@ export default function AdminDashboard() {
                         </td>
                         <td>{client.project}</td>
                         <td>{client.plan}</td>
-                        <td>{client.pages}</td>
                         <td>
                           <div className="admin__progress-cell">
                             <div className="admin__progress-mini">
@@ -788,6 +1305,35 @@ export default function AdminDashboard() {
                     onChange={(e) => setNewClient({ ...newClient, project: e.target.value })}
                     required
                   />
+                </div>
+                <div className="form-group">
+                   <label className="form-label">Features Required</label>
+                   <div className="admin__modal-features">
+                      <label className="admin__feature-check">
+                        <input 
+                          type="checkbox" 
+                          checked={newClient.features.contactForm}
+                          onChange={(e) => setNewClient({...newClient, features: {...newClient.features, contactForm: e.target.checked}})}
+                        />
+                        <span>Contact Form</span>
+                      </label>
+                      <label className="admin__feature-check">
+                        <input 
+                          type="checkbox" 
+                          checked={newClient.features.whatsapp}
+                          onChange={(e) => setNewClient({...newClient, features: {...newClient.features, whatsapp: e.target.checked}})}
+                        />
+                        <span>WhatsApp</span>
+                      </label>
+                      <label className="admin__feature-check">
+                        <input 
+                          type="checkbox" 
+                          checked={newClient.features.booking}
+                          onChange={(e) => setNewClient({...newClient, features: {...newClient.features, booking: e.target.checked}})}
+                        />
+                        <span>Booking</span>
+                      </label>
+                   </div>
                 </div>
                 <div className="form-group">
                   <label className="form-label">Plan</label>
@@ -894,5 +1440,15 @@ export default function AdminDashboard() {
         </div>
       )}
     </div>
+  );
+}
+
+// Helper icons
+function HiOutlineClock(props) {
+  return (
+    <svg stroke="currentColor" fill="none" strokeWidth="2" viewBox="0 0 24 24" strokeLinecap="round" strokeLinejoin="round" height="1em" width="1em" xmlns="http://www.w3.org/2000/svg" {...props}>
+      <circle cx="12" cy="12" r="10"></circle>
+      <polyline points="12 6 12 12 16 14"></polyline>
+    </svg>
   );
 }

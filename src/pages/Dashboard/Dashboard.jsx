@@ -58,11 +58,27 @@ export default function Dashboard() {
     async function loadData() {
       try {
         // Load client project data
-        const { data: projectData } = await supabase
+        let { data: projectData } = await supabase
           .from('projects')
           .select('*')
           .eq('user_id', user.id)
-          .single();
+          .maybeSingle();
+
+        // If not found by user_id, check for unlinked projects with same email
+        if (!projectData && user.email) {
+          const { data: emailData } = await supabase
+            .from('projects')
+            .select('*')
+            .eq('email', user.email)
+            .is('user_id', null)
+            .maybeSingle();
+          
+          if (emailData) {
+             projectData = emailData;
+             // Auto-link to the current logged in user
+             await supabase.from('projects').update({ user_id: user.id }).eq('id', emailData.id);
+          }
+        }
 
         if (projectData) {
           setProjectId(projectData.id);
@@ -73,8 +89,21 @@ export default function Dashboard() {
             plan: projectData.plan,
             num_pages: projectData.num_pages,
             status: projectData.status,
+            features: projectData.features || { contactForm: false, whatsapp: false, booking: false }
           });
+          setCustomPages(projectData.num_pages);
+          setCustomFeatures(projectData.features || { contactForm: false, whatsapp: false, booking: false });
+          setCustomTheme(projectData.theme || 'Modern');
         }
+
+        // Load progress steps
+        const { data: stepsData } = await supabase
+          .from('progress_steps')
+          .select('*')
+          .eq('project_id', projectData?.id)
+          .order('sort_order', { ascending: true });
+        
+        if (stepsData) setProgress(stepsData);
 
         // Load comments
         const { data: commentsData } = await supabase
@@ -104,7 +133,10 @@ export default function Dashboard() {
           .order('created_at', { ascending: false });
 
         if (updatesData?.length) {
-          setUpdates(updatesData);
+          setUpdates(updatesData.map(u => ({
+            ...u,
+            date: new Date(u.created_at).toISOString().split('T')[0]
+          })));
         }
       } catch (err) {
         console.log('Error loading data:', err.message);
@@ -114,11 +146,12 @@ export default function Dashboard() {
     loadData();
   }, [user]);
 
-  // Handle Real-time Subscriptions for Comments
+  // Handle Real-time Subscriptions
   useEffect(() => {
     if (!projectId) return;
     
-    const channel = supabase.channel(`project_${projectId}_comments`)
+    // 1. Comments
+    const commentChannel = supabase.channel(`project_${projectId}_comments`)
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'comments', filter: `project_id=eq.${projectId}` }, (payload) => {
         const c = payload.new;
         setChatMessages(prev => [...prev, {
@@ -132,26 +165,80 @@ export default function Dashboard() {
       })
       .subscribe();
 
+    // 2. Project Status & Features
+    const projectChannel = supabase.channel(`project_${projectId}_status`)
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'projects', filter: `id=eq.${projectId}` }, (payload) => {
+        const p = payload.new;
+        setClientData(prev => ({ 
+          ...prev, 
+          status: p.status, 
+          features: p.features || prev.features 
+        }));
+        setCustomFeatures(p.features || {});
+      })
+      .subscribe();
+
+    // 3. Progress Steps
+    const stepsChannel = supabase.channel(`project_${projectId}_steps`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'progress_steps', filter: `project_id=eq.${projectId}` }, async () => {
+        const { data } = await supabase.from('progress_steps').select('*').eq('project_id', projectId).order('sort_order', { ascending: true });
+        if (data) setProgress(data);
+      })
+      .subscribe();
+
+    // 4. Project Updates
+    const updateChannel = supabase.channel(`project_${projectId}_updates`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'project_updates', filter: `project_id=eq.${projectId}` }, async () => {
+        const { data } = await supabase.from('project_updates').select('*').eq('project_id', projectId).order('created_at', { ascending: false });
+        if (data) setUpdates(data.map(u => ({ ...u, date: new Date(u.created_at).toISOString().split('T')[0] })));
+      })
+      .subscribe();
+
     return () => {
-      supabase.removeChannel(channel);
+      supabase.removeChannel(commentChannel);
+      supabase.removeChannel(projectChannel);
+      supabase.removeChannel(stepsChannel);
+      supabase.removeChannel(updateChannel);
     };
   }, [projectId]);
 
-  const handleImageUpload = (e) => {
+  const uploadToStorage = async (file) => {
+    const fileExt = file.name.split('.').pop();
+    const fileName = `${Math.random()}.${fileExt}`;
+    const filePath = `chat/${fileName}`;
+
+    const { error: uploadError } = await supabase.storage
+      .from('project-images')
+      .upload(filePath, file);
+
+    if (uploadError) throw uploadError;
+
+    const { data: { publicUrl } } = supabase.storage
+      .from('project-images')
+      .getPublicUrl(filePath);
+
+    return publicUrl;
+  };
+
+  const handleImageUpload = async (e) => {
     const file = e.target.files[0];
     if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setChatImage(reader.result);
-      };
-      reader.readAsDataURL(file);
+      try {
+        setChatImage('uploading...');
+        const url = await uploadToStorage(file);
+        setChatImage(url);
+      } catch (err) {
+        console.error('Upload Error:', err.message);
+        setChatImage(null);
+        alert('Failed to upload image.');
+      }
     }
   };
 
-  const [customPages, setCustomPages] = useState(4);
+  const [customPages, setCustomPages] = useState(1);
   const [customFeatures, setCustomFeatures] = useState({
-    contactForm: true,
-    whatsapp: true,
+    contactForm: false,
+    whatsapp: false,
     booking: false,
   });
   const [customTheme, setCustomTheme] = useState('Modern');
@@ -166,7 +253,6 @@ export default function Dashboard() {
 
       await supabase.from('comments').insert([{
         project_id: projectId,
-        user_id: user.id,
         text: newComment,
         image_url: chatImage,
         is_client: true
@@ -183,10 +269,24 @@ export default function Dashboard() {
     setShowApproveModal(true);
   };
 
-  const confirmApprove = () => {
-    setProgress(progress.map((p) => ({ ...p, status: 'completed', date: p.date || new Date().toISOString().split('T')[0] })));
-    setClientData({ ...clientData, status: 'launched' });
-    setShowApproveModal(false);
+  const confirmApprove = async () => {
+    try {
+      if (!projectId) return;
+
+      // Update project status
+      await supabase.from('projects').update({ status: 'completed' }).eq('id', projectId);
+
+      // Mark all milestones as completed
+      await supabase.from('progress_steps')
+        .update({ status: 'completed', completed_at: new Date().toISOString() })
+        .eq('project_id', projectId);
+
+      setClientData({ ...clientData, status: 'completed' });
+      setShowApproveModal(false);
+    } catch (err) {
+      console.error('Approval failed:', err.message);
+      alert('Launch approval failed. Please try again.');
+    }
   };
 
   const getProgressPercentage = () => {
@@ -587,7 +687,7 @@ export default function Dashboard() {
                   </div>
 
                   <a
-                    href={`https://wa.me/919999999999?text=Hi! Here's my website customization: ${customPages} pages, Features: ${Object.entries(customFeatures).filter(([,v]) => v).map(([k]) => k).join(', ')}, Theme: ${customTheme}`}
+                    href={`https://wa.me/919746520910?text=Hi! Here's my website customization: ${customPages} pages, Features: ${Object.entries(customFeatures).filter(([,v]) => v).map(([k]) => k).join(', ')}, Theme: ${customTheme}`}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="btn btn-whatsapp"

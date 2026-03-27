@@ -1,4 +1,4 @@
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
 import Navbar from './components/Navbar/Navbar';
 import ProtectedRoute from './components/ProtectedRoute/ProtectedRoute';
@@ -7,6 +7,7 @@ import Login from './pages/Login/Login';
 import Dashboard from './pages/Dashboard/Dashboard';
 import AdminLogin from './pages/AdminLogin/AdminLogin';
 import AdminDashboard from './pages/AdminDashboard/AdminDashboard';
+import ChatWidget from './components/Chatbot/ChatWidget';
 import './App.css';
 
 function AppLayout({ children, hideNav }) {
@@ -66,7 +67,15 @@ export default function App() {
             }
           />
         </Routes>
+        <ChatBotSwitcher />
       </Router>
     </AuthProvider>
   );
+}
+
+function ChatBotSwitcher() {
+  const { pathname } = useLocation();
+  const isAdmin = pathname.startsWith('/admin');
+  if (isAdmin) return null;
+  return <ChatWidget />;
 }
