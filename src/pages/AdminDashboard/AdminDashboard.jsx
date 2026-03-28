@@ -60,6 +60,7 @@ export default function AdminDashboard() {
   const [selectedIds, setSelectedIds] = useState([]);
 
   const [leads, setLeads] = useState([]);
+  const [users, setUsers] = useState([]); // All registered profiles
   const [selectedLead, setSelectedLead] = useState(null);
   const [leadMessages, setLeadMessages] = useState([]);
   const [leadReply, setLeadReply] = useState('');
@@ -565,6 +566,7 @@ export default function AdminDashboard() {
     { id: 'overview', label: 'Overview', icon: <HiOutlineChartBar /> },
     { id: 'leads', label: 'Leads', icon: <HiOutlineChatAlt /> },
     { id: 'clients', label: 'All Clients', icon: <HiOutlineUsers /> },
+    { id: 'users', label: 'User Database', icon: <HiOutlineShieldCheck /> },
     { id: 'projects', label: 'Projects', icon: <HiOutlineBriefcase /> },
     { id: 'settings', label: 'Settings', icon: <HiOutlineCog /> },
   ];
@@ -913,74 +915,137 @@ export default function AdminDashboard() {
 
           {/* ===== CLIENTS LIST ===== */}
           {activeSection === 'clients' && !selectedClient && (
-            <div className="admin__clients animate-fade-in">
-              <div className="admin__clients-grid">
-                {filteredClients.map((client) => (
-                  <div key={client.id} className="admin__client-card card">
-                    <div className="admin__client-card-header">
-                      <div className="admin__client-cell">
-                        <div className="admin__client-avatar">{client.name[0]}</div>
-                        <div>
-                          <span className="admin__client-name">{client.name}</span>
-                          <span className="admin__client-email">{client.email}</span>
-                        </div>
-                      </div>
-                      <div className="admin__client-actions">
-                        <button
-                          onClick={(e) => { e.stopPropagation(); setSelectedClient(client); }}
-                          className="admin__action-btn admin__action-btn--view"
-                          title="View"
-                        >
-                          <HiOutlineEye />
-                        </button>
-                        <button
-                          onClick={(e) => { e.stopPropagation(); handleDeleteClient(client.id); }}
-                          className="admin__action-btn admin__action-btn--delete"
-                          title="Delete"
-                        >
-                          <HiOutlineTrash />
-                        </button>
-                      </div>
-                    </div>
-
-                    <div className="admin__client-card-body">
-                      <div className="admin__client-detail">
-                        <span>Project</span>
-                        <strong>{client.project}</strong>
-                      </div>
-                      <div className="admin__client-detail">
-                        <span>Plan</span>
-                        <strong>{client.plan} — ₹{client.amount.toLocaleString()}</strong>
-                      </div>
-                      <div className="admin__client-detail">
-                        <span>Pages</span>
-                        <strong>{client.pages}</strong>
-                      </div>
-                      <div className="admin__client-detail">
-                        <span>Theme</span>
-                        <strong>{client.theme}</strong>
-                      </div>
-                    </div>
-
-                    <div className="admin__client-card-footer">
-                      <div className="admin__progress-mini">
-                        <div className="admin__progress-mini-bar" style={{ width: `${client.progress}%` }}></div>
-                      </div>
-                      <div className="admin__client-footer-row">
-                        {getStatusBadge(client.status)}
-                        <button
-                          onClick={() => handleTogglePaid(client.id)}
-                          className={`admin__payment-toggle ${client.paid ? 'admin__payment-toggle--paid' : ''}`}
-                        >
-                          {client.paid ? '✅ Paid' : '💸 Mark Paid'}
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                ))}
+            <div className="admin__clients animate-fade-in card">
+              <div className="admin__recent-header" style={{ marginBottom: '1.5rem' }}>
+                <h2 className="admin__card-title">All Active Clients & Projects</h2>
+              </div>
+              
+              <div className="admin__table-wrap">
+                <table className="admin__table">
+                  <thead>
+                    <tr>
+                      <th>Client Info</th>
+                      <th>Project Overview</th>
+                      <th>Plan & Pages</th>
+                      <th>Theme</th>
+                      <th>Progress</th>
+                      <th>Status</th>
+                      <th>Payment</th>
+                      <th style={{ textAlign: 'right' }}>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredClients.map((client) => (
+                      <tr key={client.id} onClick={() => setSelectedClient(client)} className="admin__row-hover">
+                        <td>
+                          <div className="admin__client-cell">
+                            <div className="admin__client-avatar">{client.name[0]}</div>
+                            <div>
+                              <span className="admin__client-name">{client.name}</span>
+                              <span className="admin__client-email">{client.email}</span>
+                            </div>
+                          </div>
+                        </td>
+                        <td>
+                          <div style={{ display: 'flex', flexDirection: 'column' }}>
+                            <strong>{client.project}</strong>
+                            <span style={{ fontSize: '11px', opacity: 0.6 }}>Started: {client.startDate}</span>
+                          </div>
+                        </td>
+                        <td>
+                          <div style={{ display: 'flex', flexDirection: 'column' }}>
+                            <span className="badge badge-primary">{client.plan}</span>
+                            <span style={{ fontSize: '11px', marginTop: '4px' }}>{client.pages} Pages</span>
+                          </div>
+                        </td>
+                        <td>{client.theme}</td>
+                        <td style={{ minWidth: '120px' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <div className="admin__progress-mini" style={{ flex: 1 }}>
+                              <div className="admin__progress-mini-bar" style={{ width: `${client.progress}%` }}></div>
+                            </div>
+                            <span style={{ fontSize: '11px' }}>{client.progress}%</span>
+                          </div>
+                        </td>
+                        <td>{getStatusBadge(client.status)}</td>
+                        <td>
+                          <button
+                            onClick={(e) => { e.stopPropagation(); handleTogglePaid(client.id); }}
+                            className={`admin__payment-toggle ${client.paid ? 'admin__payment-toggle--paid' : ''}`}
+                            style={{ padding: '0.3rem 0.6rem', fontSize: '11px' }}
+                          >
+                            {client.paid ? '✅ Paid' : '💸 Mark Paid'}
+                          </button>
+                        </td>
+                        <td style={{ textAlign: 'right' }}>
+                          <div className="admin__client-actions" style={{ justifyContent: 'flex-end' }}>
+                            <button
+                              onClick={(e) => { e.stopPropagation(); setSelectedClient(client); }}
+                              className="admin__action-btn admin__action-btn--view"
+                            >
+                              <HiOutlineEye />
+                            </button>
+                            <button
+                              onClick={(e) => { e.stopPropagation(); handleDeleteClient(client.id); }}
+                              className="admin__action-btn admin__action-btn--delete"
+                            >
+                              <HiOutlineTrash />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
             </div>
           )}
+
+          {/* ===== USER DATABASE SECTION ===== */}
+          {activeSection === 'users' && (
+            <div className="admin__users animate-fade-in card">
+              <div className="admin__recent-header">
+                <h2 className="admin__card-title">Registered Web Accounts</h2>
+                <div style={{ fontSize: '12px', opacity: 0.6 }}>Profiles from website registrations</div>
+              </div>
+              
+              <div className="admin__table-wrap" style={{ marginTop: '1.5rem' }}>
+                <table className="admin__table">
+                  <thead>
+                    <tr>
+                      <th>User Info</th>
+                      <th>Email</th>
+                      <th>Join Date</th>
+                      <th>Account Status</th>
+                      <th>Active Projects</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {clients.map(user => (
+                      <tr key={user.id}>
+                        <td>
+                          <div className="admin__client-cell">
+                            <div className="admin__client-avatar" style={{ background: 'var(--grad-primary)' }}>{user.name[0]}</div>
+                            <span className="admin__client-name">{user.name}</span>
+                          </div>
+                        </td>
+                        <td>{user.email}</td>
+                        <td>{user.startDate}</td>
+                        <td><span className="badge badge-success">Verified</span></td>
+                        <td>{clients.filter(p => p.email === user.email).length} Projects</td>
+                      </tr>
+                    ))}
+                    {clients.length === 0 && (
+                      <tr>
+                        <td colSpan="5" className="admin__empty">No users found in database.</td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
 
           {/* ===== CLIENT DETAIL VIEW ===== */}
           {activeSection === 'clients' && selectedClient && (
