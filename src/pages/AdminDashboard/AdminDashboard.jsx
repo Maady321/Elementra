@@ -17,6 +17,7 @@ import {
   HiOutlineEye,
   HiOutlineClipboardCheck,
   HiOutlineMenuAlt2,
+  HiOutlineShieldCheck,
 } from 'react-icons/hi';
 import { supabase } from '../../lib/supabase';
 import logoImg from '../../assets/logo.png';
@@ -766,7 +767,7 @@ export default function AdminDashboard() {
                         <tr key={client.id} onClick={() => { setSelectedClient(client); setActiveSection('clients'); }}>
                           <td>
                             <div className="admin__client-cell">
-                              <div className="admin__client-avatar">{client.name[0]}</div>
+                              <div className="admin__client-avatar">{(client.name || 'C')[0]}</div>
                               <div>
                                 <span className="admin__client-name">{client.name}</span>
                                 <span className="admin__client-email">{client.email}</span>
@@ -939,7 +940,7 @@ export default function AdminDashboard() {
                       <tr key={client.id} onClick={() => setSelectedClient(client)} className="admin__row-hover">
                         <td>
                           <div className="admin__client-cell">
-                            <div className="admin__client-avatar">{client.name[0]}</div>
+                            <div className="admin__client-avatar">{(client.name || 'C')[0]}</div>
                             <div>
                               <span className="admin__client-name">{client.name}</span>
                               <span className="admin__client-email">{client.email}</span>
@@ -1025,7 +1026,7 @@ export default function AdminDashboard() {
                       <tr key={user.id}>
                         <td>
                           <div className="admin__client-cell">
-                            <div className="admin__client-avatar" style={{ background: 'var(--grad-primary)' }}>{user.name[0]}</div>
+                            <div className="admin__client-avatar" style={{ background: 'var(--grad-primary)' }}>{(user.name || 'U')[0]}</div>
                             <span className="admin__client-name">{user.name}</span>
                           </div>
                         </td>
@@ -1282,7 +1283,7 @@ export default function AdminDashboard() {
                         </td>
                         <td>
                           <div className="admin__client-cell">
-                            <div className="admin__client-avatar">{client.name[0]}</div>
+                            <div className="admin__client-avatar">{(client.name || 'C')[0]}</div>
                             <span className="admin__client-name">{client.name}</span>
                           </div>
                         </td>
