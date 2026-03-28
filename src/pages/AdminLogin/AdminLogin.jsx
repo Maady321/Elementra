@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
-import { HiOutlineLockClosed, HiOutlineUser, HiOutlineArrowRight, HiOutlineShieldCheck } from 'react-icons/hi';
+import { useSearchParams, useNavigate, Link } from 'react-router-dom';
+import { HiOutlineLockClosed, HiOutlineUser, HiOutlineArrowRight, HiOutlineShieldCheck, HiOutlineExclamation } from 'react-icons/hi';
 import { supabase } from '../../lib/supabase';
 import logoImg from '../../assets/logo.png';
 import './AdminLogin.css';
@@ -11,6 +11,9 @@ export default function AdminLogin() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const accessKey = searchParams.get('key');
+  const isAuthorizedURL = accessKey === 'elmentra-secure-2026';
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -43,10 +46,18 @@ export default function AdminLogin() {
     }
   };
 
-  const handleFillCredentials = () => {
-    setUsername('admin@elmentra');
-    setPassword('ADm!N@e1enTra@2026');
-  };
+  if (!isAuthorizedURL) {
+    return (
+      <div className="admin-login admin-login--denied">
+        <div className="admin-login__card" style={{textAlign: 'center', maxWidth: '400px'}}>
+          <HiOutlineExclamation size={48} color="#ef4444" style={{marginBottom: '1rem'}} />
+          <h2 className="admin-login__title">404 Not Found</h2>
+          <p className="admin-login__subtitle">The page you're looking for was moved or doesn't exist.</p>
+          <Link to="/" className="btn btn-primary" style={{marginTop: '1.5rem', display: 'inline-block'}}>Back to Home</Link>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="admin-login">
@@ -118,15 +129,6 @@ export default function AdminLogin() {
             </button>
           </form>
 
-          <div className="admin-login__divider"><span>quick access</span></div>
-
-          <button
-            type="button"
-            onClick={handleFillCredentials}
-            className="btn btn-secondary admin-login__demo-btn"
-          >
-            <HiOutlineShieldCheck /> Auto-fill Admin Credentials
-          </button>
 
           <div className="admin-login__footer">
             <Link to="/login">← Back to Client Login</Link>
