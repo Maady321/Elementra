@@ -308,6 +308,19 @@ export default function AdminDashboard() {
     }
   };
 
+  const logActivity = async (projectId, type, description) => {
+    try {
+      await supabase.from('activities').insert([{
+        project_id: projectId,
+        action_type: type,
+        description,
+        performed_by: 'admin'
+      }]);
+    } catch (err) {
+      console.error('Activity Log Error:', err.message);
+    }
+  };
+
   const handleLogout = () => {
     localStorage.removeItem('elmentra_admin');
     navigate('/admin');
@@ -365,6 +378,7 @@ export default function AdminDashboard() {
       setClients(clients.map((c) => {
         if (c.id === id) {
           const progressMap = { in_progress: 25, design: 50, development: 75, review: 90, completed: 100 };
+          logActivity(id, 'status_change', `Project status updated to ${newStatus.replace('_', ' ')}`);
           return { ...c, status: newStatus, progress: progressMap[newStatus] || c.progress };
         }
         return c;
@@ -414,6 +428,7 @@ export default function AdminDashboard() {
           ? { ...c, updates: [formattedUpdate, ...c.updates] }
           : c
       ));
+      logActivity(selectedClient.id, 'update_added', `New update posted: ${newUpdate.title}`);
       setSelectedClient({ ...selectedClient, updates: [formattedUpdate, ...selectedClient.updates] });
       setNewUpdate({ title: '', description: '', image: null });
       setShowAddUpdate(false);
@@ -473,6 +488,7 @@ export default function AdminDashboard() {
     try {
       const { error } = await supabase.from('projects').update({ features: updatedFeatures }).eq('id', selectedClient.id);
       if (error) throw error;
+      logActivity(selectedClient.id, 'feature_toggled', `${featureName} ${updatedFeatures[featureName] ? 'enabled' : 'disabled'}`);
       setSelectedClient({ ...selectedClient, features: updatedFeatures });
       setClients(clients.map(c => c.id === selectedClient.id ? { ...c, features: updatedFeatures } : c));
     } catch (err) {

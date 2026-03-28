@@ -141,6 +141,16 @@ CREATE TABLE IF NOT EXISTS lead_messages (
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
+-- Activities Table (log for timeline)
+CREATE TABLE IF NOT EXISTS activities (
+  id BIGSERIAL PRIMARY KEY,
+  project_id BIGINT REFERENCES projects(id) ON DELETE CASCADE,
+  action_type TEXT NOT NULL,
+  description TEXT NOT NULL,
+  performed_by TEXT NOT NULL,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
 -- Enable RLS
 ALTER TABLE leads ENABLE ROW LEVEL SECURITY;
 ALTER TABLE lead_messages ENABLE ROW LEVEL SECURITY;
@@ -154,3 +164,8 @@ CREATE POLICY "Public can view lead messages" ON lead_messages FOR SELECT USING 
 -- Admin policies (assuming admin has access to all)
 CREATE POLICY "Admin full access leads" ON leads FOR ALL USING (true);
 CREATE POLICY "Admin full access lead messages" ON lead_messages FOR ALL USING (true);
+
+-- Activities Policies
+ALTER TABLE activities ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Users can view activities" ON activities FOR SELECT USING (project_id IN (SELECT id FROM projects WHERE user_id = auth.uid()));
+CREATE POLICY "Admin full access activities" ON activities FOR ALL USING (true);

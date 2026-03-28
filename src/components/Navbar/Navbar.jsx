@@ -34,6 +34,10 @@ export default function Navbar() {
       <div className="navbar__container container">
         <Link to="/" className="navbar__logo">
           <img src={logoImg} alt="Elementra Logo" className="navbar__logo-img" />
+          <div className="navbar__brand-text">
+            <span className="navbar__brand-name">ELEMENTRA</span>
+            <span className="navbar__brand-tagline">Balance • Strength • Creation</span>
+          </div>
         </Link>
 
         <div className={`navbar__links ${mobileOpen ? 'navbar__links--open' : ''}`}>

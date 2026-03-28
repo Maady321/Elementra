@@ -19,6 +19,8 @@ import {
   HiOutlineLogout
 } from 'react-icons/hi';
 import { FaWhatsapp, FaRocket } from 'react-icons/fa';
+import ActivityTimeline from '../../components/ActivityTimeline/ActivityTimeline';
+import ProjectMockup from '../../components/ProjectMockup/ProjectMockup';
 import logoImg from '../../assets/logo.png';
 import './Dashboard.css';
 
@@ -44,6 +46,7 @@ export default function Dashboard() {
   const [clientData, setClientData] = useState(DEMO_DATA.client);
   const [progress, setProgress] = useState(DEMO_DATA.progress);
   const [updates, setUpdates] = useState(DEMO_DATA.updates);
+  const [activities, setActivities] = useState([]);
   const [chatMessages, setChatMessages] = useState([]);
   const [chatImage, setChatImage] = useState(null);
   const [newComment, setNewComment] = useState('');
@@ -132,13 +135,17 @@ export default function Dashboard() {
           .eq('project_id', projectData?.id)
           .order('created_at', { ascending: false });
 
-        if (updatesData?.length) {
-          setUpdates(updatesData.map(u => ({
-            ...u,
-            date: new Date(u.created_at).toISOString().split('T')[0]
-          })));
-        }
-      } catch (err) {
+          if (updatesData?.length) {
+            setUpdates(updatesData.map(u => ({
+              ...u,
+              date: new Date(u.created_at).toISOString().split('T')[0]
+            })));
+          }
+
+          // Load activities
+          const { data: actsData } = await supabase.from('activities').select('*').eq('project_id', projectData?.id).order('created_at', { ascending: false }).limit(10);
+          if (actsData) setActivities(actsData);
+        } catch (err) {
         console.log('Error loading data:', err.message);
       }
     }
@@ -191,6 +198,13 @@ export default function Dashboard() {
       .on('postgres_changes', { event: '*', schema: 'public', table: 'project_updates', filter: `project_id=eq.${projectId}` }, async () => {
         const { data } = await supabase.from('project_updates').select('*').eq('project_id', projectId).order('created_at', { ascending: false });
         if (data) setUpdates(data.map(u => ({ ...u, date: new Date(u.created_at).toISOString().split('T')[0] })));
+      })
+      .subscribe();
+
+    // 5. Activities
+    const activityChannel = supabase.channel(`project_${projectId}_activities`)
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'activities', filter: `project_id=eq.${projectId}` }, (payload) => {
+        setActivities(prev => [payload.new, ...prev]);
       })
       .subscribe();
 
@@ -256,6 +270,13 @@ export default function Dashboard() {
         text: newComment,
         image_url: chatImage,
         is_client: true
+      }]);
+
+      await supabase.from('activities').insert([{
+        project_id: projectId,
+        action_type: 'comment_added',
+        description: 'New feedback posted',
+        performed_by: 'client'
       }]);
 
       setNewComment('');
@@ -494,6 +515,12 @@ export default function Dashboard() {
                   </div>
                 </div>
               )}
+
+              {/* Activity Timeline */}
+              <div className="dashboard__activity-section card">
+                <h2 className="dashboard__card-title">Activity Timeline</h2>
+                <ActivityTimeline activities={activities} />
+              </div>
             </div>
           )}
 
@@ -589,6 +616,11 @@ export default function Dashboard() {
           {/* CUSTOMIZE TAB */}
           {activeTab === 'customize' && (
             <div className="dashboard__customize animate-fade-in">
+              <div className="dashboard__customize-header card" style={{ marginBottom: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem', padding: '1.5rem' }}>
+                <h2 className="dashboard__card-title">Full-Site Design Preview</h2>
+                <ProjectMockup theme={customTheme} pages={customPages} features={customFeatures} />
+              </div>
+
               <div className="dashboard__customize-grid">
                 {/* Page Count */}
                 <div className="dashboard__custom-card card">
@@ -642,24 +674,26 @@ export default function Dashboard() {
                   <h3 className="dashboard__custom-title">Theme Preference</h3>
                   <p className="dashboard__custom-desc">Select your preferred design style.</p>
                   <div className="dashboard__theme-grid">
-                    {[
-                      { name: 'Modern', color: 'linear-gradient(135deg, #667eea, #764ba2)', desc: 'Bold & vibrant' },
-                      { name: 'Minimal', color: 'linear-gradient(135deg, #f5f7fa, #c3cfe2)', desc: 'Clean & simple' },
-                      { name: 'Dark', color: 'linear-gradient(135deg, #0f0c29, #302b63)', desc: 'Sleek & premium' },
-                    ].map((theme) => (
-                      <button
-                        key={theme.name}
-                        className={`dashboard__theme-btn ${customTheme === theme.name ? 'dashboard__theme-btn--active' : ''}`}
-                        onClick={() => setCustomTheme(theme.name)}
-                      >
-                        <div
-                          className="dashboard__theme-preview"
-                          style={{ background: theme.color }}
-                        ></div>
-                        <span className="dashboard__theme-name">{theme.name}</span>
-                        <span className="dashboard__theme-desc">{theme.desc}</span>
-                      </button>
-                    ))}
+                    <button className={`dashboard__theme-btn ${customTheme === 'Modern' ? 'dashboard__theme-btn--active' : ''}`} onClick={() => setCustomTheme('Modern')}>
+                      <div className="dashboard__theme-preview" style={{ background: 'linear-gradient(135deg, #667eea, #764ba2)' }}></div>
+                      <span className="dashboard__theme-name">Modern</span>
+                    </button>
+                    <button className={`dashboard__theme-btn ${customTheme === 'Minimal' ? 'dashboard__theme-btn--active' : ''}`} onClick={() => setCustomTheme('Minimal')}>
+                      <div className="dashboard__theme-preview" style={{ background: '#f8fafc' }}></div>
+                      <span className="dashboard__theme-name">Minimal</span>
+                    </button>
+                    <button className={`dashboard__theme-btn ${customTheme === 'Light' ? 'dashboard__theme-btn--active' : ''}`} onClick={() => setCustomTheme('Light')}>
+                      <div className="dashboard__theme-preview" style={{ background: '#ffffff', border: '1px solid #ddd' }}></div>
+                      <span className="dashboard__theme-name">Light</span>
+                    </button>
+                    <button className={`dashboard__theme-btn ${customTheme === 'Lavender' ? 'dashboard__theme-btn--active' : ''}`} onClick={() => setCustomTheme('Lavender')}>
+                      <div className="dashboard__theme-preview" style={{ background: '#f5f3ff', border: '1px solid #ddd6fe' }}></div>
+                      <span className="dashboard__theme-name">Lavender</span>
+                    </button>
+                    <button className={`dashboard__theme-btn ${customTheme === 'Dark' ? 'dashboard__theme-btn--active' : ''}`} onClick={() => setCustomTheme('Dark')}>
+                      <div className="dashboard__theme-preview" style={{ background: 'linear-gradient(135deg, #0f0c29, #302b63)' }}></div>
+                      <span className="dashboard__theme-name">Dark</span>
+                    </button>
                   </div>
                 </div>
 

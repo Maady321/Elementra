@@ -7,13 +7,19 @@ import Login from './pages/Login/Login';
 import Dashboard from './pages/Dashboard/Dashboard';
 import AdminLogin from './pages/AdminLogin/AdminLogin';
 import AdminDashboard from './pages/AdminDashboard/AdminDashboard';
+import AIArchitect from './pages/AIArchitect/AIArchitect';
 import ChatWidget from './components/Chatbot/ChatWidget';
+import ThemeToggle from './components/ThemeToggle/ThemeToggle';
+import { useState, useEffect } from 'react';
 import './App.css';
 
-function AppLayout({ children, hideNav }) {
+function AppLayout({ children, hideNav, isDarkMode, toggleTheme }) {
   return (
-    <div className={`App ${hideNav ? 'App--no-nav' : ''}`}>
+    <div className={`App ${hideNav ? 'App--no-nav' : ''} ${isDarkMode ? '' : 'light-mode'}`}>
       {!hideNav && <Navbar />}
+      <div className="global-theme-switch">
+        <ThemeToggle isDarkMode={isDarkMode} onToggle={toggleTheme} />
+      </div>
       <main>
         {children}
       </main>
@@ -22,6 +28,29 @@ function AppLayout({ children, hideNav }) {
 }
 
 export default function App() {
+  const [isDarkMode, setIsDarkMode] = useState(() => {
+    const saved = localStorage.getItem('elmentra_theme');
+    return saved === null ? true : saved === 'dark';
+  });
+
+  const toggleTheme = () => {
+    setIsDarkMode(!isDarkMode);
+  };
+
+  useEffect(() => {
+    localStorage.setItem('elmentra_theme', isDarkMode ? 'dark' : 'light');
+    document.body.className = isDarkMode ? 'dark-body' : 'light-body';
+  }, [isDarkMode]);
+
+  const Layout = ({ children, hideNav }) => (
+    <AppLayout 
+      children={children} 
+      hideNav={hideNav} 
+      isDarkMode={isDarkMode} 
+      toggleTheme={toggleTheme} 
+    />
+  );
+
   return (
     <AuthProvider>
       <Router>
@@ -29,41 +58,51 @@ export default function App() {
           <Route
             path="/"
             element={
-              <AppLayout>
+              <Layout>
                 <Home />
-              </AppLayout>
+              </Layout>
             }
           />
           <Route
             path="/login"
             element={
-              <AppLayout hideNav>
+              <Layout hideNav>
                 <Login />
-              </AppLayout>
+              </Layout>
+            }
+          />
+          <Route
+            path="/ai-architect"
+            element={
+              <Layout hideNav>
+                <AIArchitect />
+              </Layout>
             }
           />
           <Route
             path="/dashboard"
             element={
               <ProtectedRoute>
-                <Dashboard />
+                <Layout>
+                  <Dashboard />
+                </Layout>
               </ProtectedRoute>
             }
           />
           <Route
             path="/admin"
             element={
-              <AppLayout hideNav>
+              <Layout hideNav>
                 <AdminLogin />
-              </AppLayout>
+              </Layout>
             }
           />
           <Route
             path="/admin/dashboard"
             element={
-              <AppLayout hideNav>
+              <Layout hideNav>
                 <AdminDashboard />
-              </AppLayout>
+              </Layout>
             }
           />
         </Routes>

@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
-import { HiOutlineGlobeAlt, HiOutlineDeviceMobile, HiOutlineChatAlt2, HiOutlineLightningBolt, HiOutlineCheck, HiOutlineStar, HiOutlineArrowRight } from 'react-icons/hi';
+import { HiOutlineGlobeAlt, HiOutlineDeviceMobile, HiOutlineChatAlt2, HiOutlineLightningBolt, HiOutlineCheck, HiOutlineStar, HiOutlineArrowRight, HiOutlineSparkles } from 'react-icons/hi';
 import { FaWhatsapp } from 'react-icons/fa';
 import Hero3D from '../../components/Hero3D/Hero3D';
 import logoImg from '../../assets/logo.png';
@@ -131,7 +131,10 @@ export default function Home() {
             </p>
             
             <div className="hero__actions reveal">
-              <Link to="/login" className="btn btn-primary btn-lg">
+              <Link to="/ai-architect" className="btn btn-primary btn-lg">
+                <HiOutlineSparkles className="btn-icon" /> AI Project Architect
+              </Link>
+              <Link to="/login" className="btn btn-secondary btn-lg">
                 Get Free Demo
               </Link>
               <a 
