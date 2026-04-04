@@ -2,28 +2,21 @@
   display: flex;
   min-height: 100vh;
   background-color: var(--color-bg);
-  background-image: var(--grad-bg);
-  background-attachment: fixed;
-}
-
-.dashboard {
-  display: flex;
-  min-height: 100vh;
-  background-color: var(--color-bg);
-  background-image: var(--grad-bg);
-  background-attachment: fixed;
+  background-image: var(--grad-mesh);
+  color: var(--color-text);
 }
 
 /* Sidebar */
 .admin__sidebar {
-  width: 260px;
-  background-color: #1e293b;
-  border-right: 1px solid #334155;
+  width: 280px;
+  background: var(--skeuo-bg);
+  border-right: var(--skeuo-border);
+  box-shadow: 4px 0 15px rgba(0, 0, 0, 0.3);
   display: flex;
   flex-direction: column;
-  padding: 1.5rem;
+  padding: 3rem 1.5rem;
   flex-shrink: 0;
-  transition: all 0.3s;
+  z-index: 100;
 }
 
 .admin__sidebar-header {
@@ -77,13 +70,17 @@
 }
 
 .admin__nav-item:hover {
-  background: #334155;
-  color: #f8fafc;
+  background: rgba(255, 255, 255, 0.02);
+  color: #fff;
+  transform: translateX(4px);
+  box-shadow: var(--skeuo-highlight);
 }
 
 .admin__nav-item--active {
-  background: rgba(255, 140, 0, 0.1);
+  background: var(--color-bg);
   color: var(--color-primary);
+  box-shadow: var(--skeuo-shadow-in), var(--skeuo-highlight);
+  border-color: rgba(255, 255, 255, 0.05);
 }
 
 .admin__nav-item svg {
@@ -120,9 +117,11 @@
 }
 
 .admin__header {
-  background: #1e293b;
-  padding: 1.25rem 2rem;
-  border-bottom: 1px solid #334155;
+  background: rgba(2, 6, 23, 0.5);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  padding: 1.5rem 3rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -130,14 +129,15 @@
 }
 
 .admin__page-title {
-  font-size: 1.5rem;
+  font-size: 1.75rem;
   font-weight: 700;
+  letter-spacing: -0.02em;
   color: #fff;
 }
 
 .admin__page-subtitle {
-  font-size: 0.875rem;
-  color: #94a3b8;
+  font-size: 0.95rem;
+  color: var(--color-text-muted);
 }
 
 .admin__content {
@@ -155,16 +155,32 @@
 }
 
 .admin__stat-card {
+  padding: 2rem;
+  background: var(--skeuo-bg);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--skeuo-border);
+  border-radius: 24px;
   display: flex;
   align-items: center;
-  gap: 1.25rem;
+  gap: 1.5rem;
+  transition: all 0.3s ease;
+}
+
+.admin__stat-card:hover {
+  transform: translateY(-5px);
+  border-color: var(--color-primary);
+  background: rgba(255, 255, 255, 0.05);
 }
 
 .admin__stat-icon {
-  width: 54px; height: 54px;
-  border-radius: 12px;
-  display: flex; align-items: center; justify-content: center;
-  font-size: 1.5rem;
+  width: 56px;
+  height: 56px;
+  border-radius: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.75rem;
 }
 
 .admin__stat-icon--blue { background: rgba(14, 165, 233, 0.1); color: #0ea5e9; }

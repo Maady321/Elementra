@@ -273,11 +273,11 @@ export default function Home() {
                   </div>
                 )}
 
-                <h3 className="pricing__name">{plan.name}</h3>
+                <h3 className="pricing__name skeuo-text-etched">{plan.name}</h3>
                 <p className="pricing__description">{plan.description}</p>
 
                 <div className="pricing__price">
-                  <span className="pricing__amount">{plan.price}</span>
+                  <span className="pricing__amount skeuo-text-etched">{plan.price}</span>
                   <span className="pricing__period">one-time</span>
                 </div>
 

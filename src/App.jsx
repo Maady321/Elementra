@@ -9,17 +9,13 @@ import AdminLogin from './pages/AdminLogin/AdminLogin';
 import AdminDashboard from './pages/AdminDashboard/AdminDashboard';
 import AIArchitect from './pages/AIArchitect/AIArchitect';
 import ChatWidget from './components/Chatbot/ChatWidget';
-import ThemeToggle from './components/ThemeToggle/ThemeToggle';
-import { useState, useEffect } from 'react';
+import { useEffect } from 'react';
 import './App.css';
 
-function AppLayout({ children, hideNav, isDarkMode, toggleTheme }) {
+function AppLayout({ children, hideNav }) {
   return (
-    <div className={`App ${hideNav ? 'App--no-nav' : ''} ${isDarkMode ? '' : 'light-mode'}`}>
+    <div className={`App ${hideNav ? 'App--no-nav' : ''}`}>
       {!hideNav && <Navbar />}
-      <div className="global-theme-switch">
-        <ThemeToggle isDarkMode={isDarkMode} onToggle={toggleTheme} />
-      </div>
       <main>
         {children}
       </main>
@@ -28,26 +24,14 @@ function AppLayout({ children, hideNav, isDarkMode, toggleTheme }) {
 }
 
 export default function App() {
-  const [isDarkMode, setIsDarkMode] = useState(() => {
-    const saved = localStorage.getItem('elmentra_theme');
-    return saved === null ? true : saved === 'dark';
-  });
-
-  const toggleTheme = () => {
-    setIsDarkMode(!isDarkMode);
-  };
-
   useEffect(() => {
-    localStorage.setItem('elmentra_theme', isDarkMode ? 'dark' : 'light');
-    document.body.className = isDarkMode ? 'dark-body' : 'light-body';
-  }, [isDarkMode]);
+    document.body.className = 'dark-body';
+  }, []);
 
   const Layout = ({ children, hideNav }) => (
     <AppLayout 
       children={children} 
       hideNav={hideNav} 
-      isDarkMode={isDarkMode} 
-      toggleTheme={toggleTheme} 
     />
   );
 

@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
-import { HiOutlineMail, HiOutlineLockClosed, HiOutlineArrowRight } from 'react-icons/hi';
 import logoImg from '../../assets/logo.png';
 import './Login.css';
 
@@ -15,14 +14,23 @@ export default function Login() {
   const { signIn, signUp } = useAuth();
   const navigate = useNavigate();
 
-  const handleSubmit = async (e) => {
+  const handleSignIn = async (e) => {
     e.preventDefault();
+    submitAuth(false);
+  };
+
+  const handleSignUp = async (e) => {
+    e.preventDefault();
+    submitAuth(true);
+  };
+
+  const submitAuth = async (isSignUpAction) => {
     setError('');
     setSuccess('');
     setLoading(true);
 
     try {
-      if (isSignUp) {
+      if (isSignUpAction) {
         await signUp(email, password);
         setSuccess('Account created! Please check your email to verify.');
       } else {
@@ -36,108 +44,87 @@ export default function Login() {
     }
   };
 
-
   return (
-    <div className="login-page">
-      <div className="login__bg">
-        <div className="login__orb login__orb--1"></div>
-        <div className="login__orb login__orb--2"></div>
-        <div className="login__grid"></div>
+    <div className="skeuo-page">
+      {/* Background elements to mimic the dark purple/blue highly animated styling */}
+      <div className="bg-canvas">
+        <div className="bg-orb bg-orb-purple"></div>
+        <div className="bg-orb bg-orb-blue"></div>
+        
+        {/* Animated 3D floor perspective grid overlay */}
+        <div className="bg-grid-perspective">
+          <div className="bg-animated-grid"></div>
+        </div>
+
+        {/* Scrolling diagonal waves overlay */}
+        <div className="bg-waves"></div>
       </div>
 
-      <div className="login__container">
-        <div className="login__card">
-          <div className="login__header">
-            <Link to="/" className="login__logo-wrap">
-              <img src={logoImg} alt="Elmentra" className="login__logo-img" />
+      <div className={`skeuo-card-master ${isSignUp ? 'is-signup' : ''}`}>
+        {/* LEFT SIDE: BRANDING */}
+        <div className="skeuo-card-area-left">
+          <div className="brand-logo">
+            <Link to="/">
+              <img src={logoImg} alt="Elmentra" />
             </Link>
-            <h1 className="login__title">
-              {isSignUp ? 'Create Account' : 'Welcome Back'}
-            </h1>
-            <p className="login__subtitle">
-              {isSignUp
-                ? 'Sign up to access your project dashboard'
-                : 'Sign in to view your project progress'}
+          </div>
+          
+          <div className="brand-text-area">
+            <h1>Elementra<br/>Workspace</h1>
+            <p>
+              Welcome to the ultimate project management dashboard.
+              Stay connected with your team, monitor task progress, and
+              achieve your milestones. Manage your workflow efficiently.
             </p>
           </div>
 
-          {error && (
-            <div className="login__alert login__alert--error">
-              <span>⚠️</span> {error}
+          <div className="brand-footer">
+            www.elmentra.com
+          </div>
+        </div>
+
+        {/* CENTER DIVIDER LINE */}
+        <div className="skeuo-card-divider"></div>
+
+        {/* RIGHT SIDE: AUTHENTICATION */}
+        <div className="skeuo-card-area-right">
+          <h2 key={isSignUp ? 'title-up' : 'title-in'} className="auth-title">{isSignUp ? 'Register' : 'Login'}</h2>
+          
+          {(error || success) && (
+            <div className={`auth-alert ${error ? 'error' : 'success'}`}>
+              {error || success}
             </div>
           )}
 
-          {success && (
-            <div className="login__alert login__alert--success">
-              <span>✅</span> {success}
-            </div>
-          )}
+          <form key={isSignUp ? 'signup' : 'login'} onSubmit={isSignUp ? handleSignUp : handleSignIn} className="auth-form-body">
+            <input
+              type="email"
+              className="pill-input"
+              placeholder="Username / Email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
+            />
+            
+            <input
+              type="password"
+              className="pill-input"
+              placeholder="Password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+              minLength={6}
+            />
 
-          <form onSubmit={handleSubmit} className="login__form">
-            <div className="form-group">
-              <label className="form-label">Email Address</label>
-              <div className="login__input-wrap">
-                <HiOutlineMail className="login__input-icon" />
-                <input
-                  type="email"
-                  className="form-input login__input"
-                  placeholder="your@email.com"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  required
-                />
-              </div>
-            </div>
-
-            <div className="form-group">
-              <label className="form-label">Password</label>
-              <div className="login__input-wrap">
-                <HiOutlineLockClosed className="login__input-icon" />
-                <input
-                  type="password"
-                  className="form-input login__input"
-                  placeholder="Enter your password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  required
-                  minLength={6}
-                />
-              </div>
-            </div>
-
-            <button
-              type="submit"
-              className="btn btn-primary btn-lg login__submit"
-              disabled={loading}
-            >
-              {loading ? (
-                <span className="login__spinner"></span>
-              ) : (
-                <>
-                  {isSignUp ? 'Create Account' : 'Sign In'}
-                  <HiOutlineArrowRight />
-                </>
-              )}
+            <button type="submit" className="pill-submit" disabled={loading}>
+              {loading ? 'Processing...' : (isSignUp ? 'Create' : 'Login')}
             </button>
           </form>
-
-
-          <div className="login__toggle">
-            {isSignUp ? (
-              <p>
-                Already have an account?{' '}
-                <button onClick={() => { setIsSignUp(false); setError(''); setSuccess(''); }}>
-                  Sign In
-                </button>
-              </p>
-            ) : (
-              <p>
-                Don't have an account?{' '}
-                <button onClick={() => { setIsSignUp(true); setError(''); setSuccess(''); }}>
-                  Sign Up
-                </button>
-              </p>
-            )}
+          
+          <div className="auth-switch-link">
+            <button type="button" onClick={() => { setIsSignUp(!isSignUp); setError(''); setSuccess(''); }}>
+              {isSignUp ? 'Already have an account? Login' : "Don't have an account? Register"}
+            </button>
           </div>
         </div>
       </div>
