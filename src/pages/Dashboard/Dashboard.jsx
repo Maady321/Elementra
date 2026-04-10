@@ -411,7 +411,7 @@ export default function Dashboard() {
           </div>
 
           <div className="dashboard__header-actions">
-            <button onClick={handleApprove} className="btn btn-success btn-sm">
+            <button onClick={handleApprove} className="btn btn-primary btn-sm">
               <FaRocket /> Approve & Go Live
             </button>
           </div>
@@ -747,7 +747,7 @@ export default function Dashboard() {
               <button onClick={() => setShowApproveModal(false)} className="btn btn-secondary">
                 Cancel
               </button>
-              <button onClick={confirmApprove} className="btn btn-success">
+              <button onClick={confirmApprove} className="btn btn-primary">
                 <HiOutlineCheck /> Yes, Go Live!
               </button>
             </div>

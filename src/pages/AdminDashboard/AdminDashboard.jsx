@@ -596,7 +596,7 @@ export default function AdminDashboard() {
 
   return (
     <div className="admin">
-      <header className="dashboard__mobile-header">
+      <header className="admin__mobile-header">
         <Link to="/" className="mobile-logo">
            <img src={logoImg} alt="logo" height="32" />
         </Link>
@@ -635,11 +635,11 @@ export default function AdminDashboard() {
       </aside>
 
       {/* BOTTOM NAV FOR MOBILE */}
-      <nav className="dashboard__bottom-nav">
+      <nav className="admin__bottom-nav">
         {sidebarItems.map((item) => (
           <button
             key={item.id}
-            className={`dashboard__bottom-item ${activeSection === item.id ? 'active' : ''}`}
+            className={`admin__bottom-item ${activeSection === item.id ? 'active' : ''}`}
             onClick={() => { setActiveSection(item.id); setSelectedClient(null); }}
           >
             {item.icon}

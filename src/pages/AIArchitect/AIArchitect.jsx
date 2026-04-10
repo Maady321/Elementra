@@ -7,74 +7,68 @@ import {
   HiOutlineCube, 
   HiOutlineColorSwatch, 
   HiOutlineDocumentText, 
-  HiOutlineCurrencyRupee 
+  HiOutlineCurrencyRupee,
+  HiOutlineCode,
+  HiOutlineClipboardCopy,
+  HiOutlineExternalLink,
+  HiOutlineEye,
+  HiOutlineDeviceTablet,
+  HiOutlineDeviceMobile,
+  HiOutlineDesktopComputer
 } from 'react-icons/hi';
 import { FaWhatsapp } from 'react-icons/fa';
+import ProjectMockup from '../../components/ProjectMockup/ProjectMockup';
+import { analyzeProjectWithAI } from '../../services/aiService';
 import './AIArchitect.css';
 
 export default function AIArchitect() {
   const navigate = useNavigate();
   const [description, setDescription] = useState('');
-  const [status, setStatus] = useState('idle'); // idle, analyzing, results
+  const [status, setStatus] = useState('idle'); // idle, analyzing, results, error
+  const [errorMsg, setErrorMsg] = useState('');
   const [result, setResult] = useState(null);
+  const [showCode, setShowCode] = useState(false);
+  const [previewSize, setPreviewSize] = useState('desktop');
   const scrollRef = useRef(null);
+  const iframeRef = useRef(null);
 
   const analyzeProject = async (e) => {
     e.preventDefault();
     if (!description.trim()) return;
 
     setStatus('analyzing');
+    setErrorMsg('');
     
-    // Simulate AI thinking
-    await new Promise(resolve => setTimeout(resolve, 3000));
-
-    // Keyword based "AI" logic
-    const desc = description.toLowerCase();
-    let pages = 3;
-    let features = ['Responsive Design', 'WhatsApp Integration', 'SEO Basics'];
-    let theme = 'Modern';
-    let colors = ['#6366f1', '#a855f7', '#ec4899']; // Default Sunset Nebula
-    let price = 3499;
-
-    if (desc.includes('gym') || desc.includes('fitness')) {
-      pages = 5;
-      features.push('Class Schedule', 'Membership Tiers', 'Trainer Profiles');
-      theme = 'Bold & Dynamic';
-      colors = ['#f97316', '#ef4444', '#1f2937'];
-      price = 5999;
-    } else if (desc.includes('restaurant') || desc.includes('food') || desc.includes('cafe')) {
-      pages = 4;
-      features.push('Digital Menu', 'Reservation Form', 'Google Maps');
-      theme = 'Elegant & Organic';
-      colors = ['#10b981', '#065f46', '#fef3c7'];
-      price = 4999;
-    } else if (desc.includes('shop') || desc.includes('store') || desc.includes('ecommerce')) {
-      pages = 6;
-      features.push('Product Catalog', 'Shopping Cart', 'Payment Gateway');
-      theme = 'Clean & Minimal';
-      colors = ['#2563eb', '#3b82f6', '#f8fafc'];
-      price = 8999;
-    } else if (desc.includes('portfolio') || desc.includes('artist') || desc.includes('photographer')) {
-      pages = 3;
-      features.push('Image Gallery', 'Client Reviews', 'Instagram Feed');
-      theme = 'Minimal & Professional';
-      colors = ['#18181b', '#3f3f46', '#a1a1aa'];
-      price = 3499;
+    try {
+      const aiResult = await analyzeProjectWithAI(description);
+      
+      if (aiResult) {
+        setResult(aiResult);
+        setStatus('results');
+      } else {
+        throw new Error("AI Service returned no results. This is usually due to insufficient API quota or an invalid key.");
+      }
+    } catch (err) {
+      console.error(err);
+      setErrorMsg(err.message);
+      setStatus('error');
     }
+  };
 
-    setResult({
-      pages,
-      features,
-      theme,
-      colors,
-      price,
-      title: description.length > 30 ? description.substring(0, 30) + '...' : description
-    });
-    setStatus('results');
+  const generateDummyCode = () => {
+    if (!result) return '';
+    return result.dummyHtml || `<!DOCTYPE html><html><body><h1>No Preview Available</h1></body></html>`;
   };
 
   useEffect(() => {
-    if (status === 'results') {
+    if (status === 'results' && result?.dummyHtml && iframeRef.current) {
+      const iframe = iframeRef.current;
+      iframe.srcdoc = result.dummyHtml;
+    }
+  }, [status, result]);
+
+  useEffect(() => {
+    if (status === 'results' || status === 'error') {
       scrollRef.current?.scrollIntoView({ behavior: 'smooth' });
     }
   }, [status]);
@@ -93,10 +87,10 @@ export default function AIArchitect() {
           </Link>
           <h1 className="ai-arch__title">
             <HiOutlineSparkles className="ai-arch__sparkle" />
-            AI Project Architect
+            Project Architect 2.0
           </h1>
           <p className="ai-arch__subtitle">
-            Describe your business in one paragraph, and our AI will design your digital roadmap.
+            Experience the future of web design. Enter your needs, and watch your <span className="text-gradient">Real Frontend</span> build itself in seconds.
           </p>
         </header>
 
@@ -104,7 +98,7 @@ export default function AIArchitect() {
           <form onSubmit={analyzeProject}>
             <textarea
               className="ai-arch__textarea"
-              placeholder="Example: I want to build a website for my new Crossfit Gym in Bangalore. It should show our class schedules, trainer profiles, and have a way for people to join memberships."
+              placeholder="Tell us everything. 'I want a modern gym website with dark mode, high-quality images of trainers, a membership pricing table, and a contact form.'"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               disabled={status === 'analyzing'}
@@ -115,7 +109,7 @@ export default function AIArchitect() {
               className={`btn btn-primary btn-lg ai-arch__submit ${status === 'analyzing' ? 'loading' : ''}`}
               disabled={status === 'analyzing' || !description.trim()}
             >
-              {status === 'analyzing' ? 'Analyzing Ecosystem...' : 'Generate My Roadmap'}
+              {status === 'analyzing' ? 'Synthesizing Frontend...' : 'Build My Real Website'}
             </button>
           </form>
         </section>
@@ -127,75 +121,130 @@ export default function AIArchitect() {
               <HiOutlineCube size={48} />
             </div>
             <div className="ai-arch__loading-steps">
-              <div className="step">Analyzing business requirements...</div>
-              <div className="step">Visualizing brand identity...</div>
-              <div className="step">Calculating technical scope...</div>
+              <div className="step">Interpreting business DNA...</div>
+              <div className="step">Generating Tailwind components...</div>
+              <div className="step">Injecting high-fidelity assets...</div>
             </div>
+          </div>
+        )}
+
+        {status === 'error' && (
+          <div className="ai-arch__error card animate-fade-up" ref={scrollRef}>
+            <div className="error-icon"><HiOutlineCube size={48} /></div>
+            <h3>Synthesis Interrupted</h3>
+            <div className="error-message">
+              {errorMsg}
+            </div>
+            <p className="error-hint">
+              <strong>Technical Note:</strong> Both the Gemini and OpenAI keys provided showed "Insufficient Quota" in our tests. Please verify your billing at platform.openai.com.
+            </p>
+            <button className="btn btn-secondary" onClick={() => setStatus('idle')}>Update Key & Try Again</button>
           </div>
         )}
 
         {status === 'results' && result && (
           <div className="ai-arch__results animate-fade-up" ref={scrollRef}>
+            
+            {/* REAL INTERACTIVE PREVIEW */}
+            <div className="ai-arch__real-preview card">
+              <div className="preview-toolbar">
+                <div className="toolbar-left">
+                   <div className="status-badge"><span className="pulse"></span> LIVE PREVIEW</div>
+                </div>
+                <div className="toolbar-center">
+                  <button className={`size-btn ${previewSize === 'mobile' ? 'active' : ''}`} onClick={() => setPreviewSize('mobile')}><HiOutlineDeviceMobile /></button>
+                  <button className={`size-btn ${previewSize === 'tablet' ? 'active' : ''}`} onClick={() => setPreviewSize('tablet')}><HiOutlineDeviceTablet /></button>
+                  <button className={`size-btn ${previewSize === 'desktop' ? 'active' : ''}`} onClick={() => setPreviewSize('desktop')}><HiOutlineDesktopComputer /></button>
+                </div>
+                <div className="toolbar-right">
+                   <button className="btn-sm-outline" onClick={() => {
+                     const win = window.open('', '_blank');
+                     win.document.write(generateDummyCode());
+                   }}>
+                     <HiOutlineExternalLink /> Open Full Screen
+                   </button>
+                </div>
+              </div>
+              <div className={`iframe-container ${previewSize}`}>
+                <iframe 
+                  ref={iframeRef} 
+                  title="Real Website Preview" 
+                  className="preview-iframe"
+                  srcDoc={generateDummyCode()}
+                ></iframe>
+              </div>
+            </div>
+
             <div className="ai-arch__grid">
-              {/* Scope Card */}
               <div className="ai-arch__res-card card">
                 <div className="icon-wrap"><HiOutlineDocumentText /></div>
-                <h3>Project Scope</h3>
+                <h3>Technical Blueprint</h3>
                 <div className="stat">
-                  <span className="val">{result.pages}</span>
-                  <span className="label">Recommended Pages</span>
+                  <span className="val">{result.pages} Pages</span>
+                  <span className="label">Full Stack Architecture</span>
                 </div>
                 <div className="res-list">
-                  {result.features.map(f => (
+                  {result.features?.map(f => (
                     <div key={f} className="res-item"><HiOutlineCheck /> {f}</div>
                   ))}
                 </div>
               </div>
 
-              {/* Design Card */}
               <div className="ai-arch__res-card card">
                 <div className="icon-wrap"><HiOutlineColorSwatch /></div>
-                <h3>Design Identity</h3>
+                <h3>Visual Design System</h3>
                 <div className="stat">
                   <span className="val">{result.theme}</span>
-                  <span className="label">Visual Style</span>
+                  <span className="label">Production Theme</span>
                 </div>
                 <div className="color-row">
-                  {result.colors.map(c => (
+                  {result.colors?.map(c => (
                     <div key={c} className="color-pip" style={{ background: c }} title={c}></div>
                   ))}
                 </div>
-                <p className="res-desc">
-                  Based on your business type, we suggest a {result.theme.toLowerCase()} look with high-contrast elements to build trust.
-                </p>
+                <div className="cta-group-mini">
+                  <button className="btn btn-outline-sm" onClick={() => setShowCode(!showCode)}>
+                    <HiOutlineCode /> {showCode ? 'Hide Code' : 'View React/HTML Source'}
+                  </button>
+                </div>
               </div>
 
-              {/* Quote Card */}
               <div className="ai-arch__res-card card ai-arch__res-card--highlight">
                 <div className="icon-wrap"><HiOutlineCurrencyRupee /></div>
-                <h3>Estimated Quote</h3>
+                <h3>Production Quote</h3>
                 <div className="stat">
-                   <span className="val">₹{result.price.toLocaleString()}</span>
-                   <span className="label">Project Total</span>
-                </div>
-                <div className="res-info">
-                  <HiOutlineCube /> Estimated Delivery: 3–5 Days
+                   <span className="val">₹{result.price?.toLocaleString()}</span>
+                   <span className="label">Total Development & Setup</span>
                 </div>
                 <div className="cta-group">
                   <a 
-                    href={`https://wa.me/919746520910?text=Hi! I used your AI Architect for my business: ${result.title}. It suggested a ${result.pages} page site for ₹${result.price}. I want to discuss this!`}
+                    href={`https://wa.me/919746520910?text=Hi! I love the ${result.title} preview! I'm ready to move to production for ₹${result.price}.`}
                     target="_blank" 
                     rel="noopener noreferrer" 
                     className="btn btn-whatsapp"
                   >
-                    <FaWhatsapp /> Discuss on WhatsApp
+                    <FaWhatsapp /> Deploy Now
                   </a>
-                  <Link to="/login" className="btn btn-secondary">
-                    Register to Start Dashboard
-                  </Link>
                 </div>
               </div>
             </div>
+
+            {showCode && (
+              <div className="ai-arch__code-view card animate-fade-in">
+                <div className="code-header">
+                  <h4>Source Blueprint Code</h4>
+                  <button className="btn btn-sm" onClick={() => {
+                    navigator.clipboard.writeText(generateDummyCode());
+                    alert('Source copied!');
+                  }}>
+                    <HiOutlineClipboardCopy /> Copy
+                  </button>
+                </div>
+                <pre className="code-content">
+                  <code>{generateDummyCode()}</code>
+                </pre>
+              </div>
+            )}
           </div>
         )}
       </div>

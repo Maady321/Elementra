@@ -140,6 +140,17 @@
   color: var(--color-text-muted);
 }
 
+.admin__header-search,
+.admin__header-actions {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.admin__header-search .form-input {
+  min-width: 200px;
+}
+
 .admin__content {
   flex: 1;
   overflow-y: auto;
@@ -580,6 +591,78 @@
   font-style: italic;
 }
 
+/* MOBILE UI */
+.admin__mobile-header {
+  display: none;
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 70px;
+  background: rgba(2, 6, 23, 0.8);
+  backdrop-filter: blur(25px);
+  -webkit-backdrop-filter: blur(25px);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  z-index: 1000;
+  padding: 0 1.5rem;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.mobile-logout {
+  background: none;
+  border: none;
+  color: #ef4444; /* var(--color-danger) or red */
+  cursor: pointer;
+}
+
+.admin__bottom-nav {
+  display: none;
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  height: 80px;
+  background: rgba(2, 6, 23, 0.7);
+  backdrop-filter: blur(30px) saturate(180%);
+  -webkit-backdrop-filter: blur(30px) saturate(180%);
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  z-index: 1000;
+  padding: 0 1rem;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 1.5rem;
+  overflow-x: auto;
+  white-space: nowrap;
+  box-shadow: 0 -10px 30px rgba(0, 0, 0, 0.3);
+  scrollbar-width: none;
+}
+
+.admin__bottom-nav::-webkit-scrollbar {
+  display: none;
+}
+
+.admin__bottom-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  color: var(--color-text-muted);
+  font-size: 0.7rem;
+  font-weight: 600;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  background: none;
+  border: none;
+  cursor: pointer;
+  min-width: 65px;
+  flex-shrink: 0;
+}
+
+.admin__bottom-item.active {
+  color: var(--color-primary);
+  transform: translateY(-5px);
+}
+
 @media (max-width: 991px) {
   .admin {
     flex-direction: column;
@@ -589,11 +672,11 @@
     display: none;
   }
 
-  .dashboard__mobile-header {
+  .admin__mobile-header {
     display: flex;
   }
 
-  .dashboard__bottom-nav {
+  .admin__bottom-nav {
     display: flex;
   }
 
@@ -611,7 +694,22 @@
     padding: 1rem;
   }
 
+  .admin__header-search,
+  .admin__header-actions {
+    width: 100%;
+    flex-wrap: wrap;
+  }
+
+  .admin__header-search .form-input {
+    flex: 1;
+    min-width: 100px;
+  }
+
   .admin__stats-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .admin__clients-grid {
     grid-template-columns: 1fr;
   }
 
