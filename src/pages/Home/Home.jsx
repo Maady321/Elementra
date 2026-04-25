@@ -1,14 +1,17 @@
-import { useRef } from 'react';
+import { useRef, lazy, Suspense } from 'react';
 import { Link } from 'react-router-dom';
 import { HiOutlineGlobeAlt, HiOutlineDeviceMobile, HiOutlineChatAlt2, HiOutlineLightningBolt, HiOutlineCheck, HiOutlineStar, HiOutlineArrowRight, HiOutlineSparkles } from 'react-icons/hi';
 import { FaWhatsapp } from 'react-icons/fa';
 import { motion, useScroll, useTransform, useSpring, useMotionValue } from 'framer-motion';
-import Hero3D from '../../components/Hero3D/Hero3D';
+import { Helmet } from 'react-helmet-async';
 import logoImg from '../../assets/logo.png';
 import Magnetic from '../../components/Magnetic/Magnetic';
 import SpotlightCard from '../../components/SpotlightCard/SpotlightCard';
 import PerspectiveSection from '../../components/Effects/PerspectiveSection';
 import './Home.css';
+
+// Lazy load Three.js component
+const Hero3D = lazy(() => import('../../components/Hero3D/Hero3D'));
 
 function FloatingParticles() {
   const particles = Array.from({ length: 20 });
@@ -160,7 +163,6 @@ function PortfolioCard({ item }) {
 
 export default function Home() {
   const { scrollY } = useScroll();
-  // ... rest of the pricingPlans and portfolioItems
   
   // Parallax transforms for Hero
   const heroTextY = useTransform(scrollY, [0, 500], [0, 200]);
@@ -251,6 +253,10 @@ export default function Home() {
 
   return (
     <div className="home" onMouseMove={handleHeroMouseMove}>
+      <Helmet>
+        <title>Elementra — Professional Websites for Your Business</title>
+        <meta name="description" content="We build beautiful, fast websites starting at ₹1,499. Perfect for salons, gyms, restaurants and local businesses. 3-day delivery." />
+      </Helmet>
       <ScrollProgressBar />
       
       {/* HERO SECTION */}
@@ -284,34 +290,12 @@ export default function Home() {
           ></motion.div>
           <div className="hero__grid"></div>
           <FloatingParticles />
-          <motion.div 
-            animate={{ 
-              x: [0, 100, 0],
-              y: [0, -50, 0],
-              rotate: 360 
-            }}
-            transition={{ duration: 25, repeat: Infinity, ease: "linear" }}
-            className="glass-sphere"
-            style={{ width: '300px', height: '300px', top: '10%', left: '10%' }}
-          />
-          <motion.div 
-            animate={{ 
-              x: [0, -80, 0],
-              y: [0, 100, 0],
-              rotate: -360 
-            }}
-            transition={{ duration: 30, repeat: Infinity, ease: "linear" }}
-            className="glass-sphere"
-            style={{ width: '450px', height: '450px', bottom: '15%', right: '5%' }}
-          />
-
-          <div className="circuit-vein" style={{ width: '2px', height: '30vh', top: '10%', left: '20%' }}></div>
-          <div className="circuit-vein" style={{ width: '2px', height: '50vh', top: '30%', right: '15%' }}></div>
-          <div className="circuit-vein" style={{ width: '30vw', height: '2px', bottom: '20%', left: '10%' }}></div>
         </div>
 
         <motion.div className="hero__3d" style={{ y: hero3DY, opacity: heroOpacity }}>
-          <Hero3D />
+          <Suspense fallback={<div className="hero__3d-loader">Loading 3D Scene...</div>}>
+            <Hero3D />
+          </Suspense>
         </motion.div>
 
         <div className="hero__content container">
@@ -438,50 +422,32 @@ export default function Home() {
             </motion.p>
 
             <div className="problem__grid">
-              <motion.div 
-                variants={itemVariants} 
-                whileHover={{ y: -10, rotateZ: 1 }} 
-                className="problem__card-outer"
-              >
+              <motion.div variants={itemVariants} whileHover={{ y: -10 }} className="problem__card-outer">
                 <SpotlightCard>
                   <div className="problem__card card">
                     <div className="problem__icon problem__icon--danger">❌</div>
                     <h3 className="problem__title">No Website = Losing Customers</h3>
-                    <p className="problem__text">
-                      90% of customers search online before visiting a business. Without a website, you're invisible to them.
-                    </p>
+                    <p className="problem__text">90% of customers search online before visiting a business. Without a website, you're invisible to them.</p>
                   </div>
                 </SpotlightCard>
               </motion.div>
 
-              <motion.div 
-                variants={itemVariants} 
-                whileHover={{ y: -10, rotateZ: -1 }} 
-                className="problem__card-outer"
-              >
+              <motion.div variants={itemVariants} whileHover={{ y: -10 }} className="problem__card-outer">
                 <SpotlightCard>
                   <div className="problem__card card">
                     <div className="problem__icon problem__icon--warning">⚠️</div>
                     <h3 className="problem__title">Your Competitors Are Online</h3>
-                    <p className="problem__text">
-                      While you wait, your competitors are already attracting your potential customers through their websites.
-                    </p>
+                    <p className="problem__text">While you wait, your competitors are already attracting your potential customers through their websites.</p>
                   </div>
                 </SpotlightCard>
               </motion.div>
 
-              <motion.div 
-                variants={itemVariants} 
-                whileHover={{ y: -10, rotateZ: 1 }} 
-                className="problem__card-outer"
-              >
+              <motion.div variants={itemVariants} whileHover={{ y: -10 }} className="problem__card-outer">
                 <SpotlightCard>
                   <div className="problem__card card">
                     <div className="problem__icon problem__icon--info">📱</div>
                     <h3 className="problem__title">Mobile Users Are Growing</h3>
-                    <p className="problem__text">
-                      Over 70% of searches happen on mobile. A mobile-friendly website is no longer optional — it's essential.
-                    </p>
+                    <p className="problem__text">Over 70% of searches happen on mobile. A mobile-friendly website is no longer optional — it's essential.</p>
                   </div>
                 </SpotlightCard>
               </motion.div>
@@ -501,9 +467,7 @@ export default function Home() {
         >
           <div className="container">
             <motion.h2 variants={itemVariants} className="section-title haptic-float">What We Deliver</motion.h2>
-            <motion.p variants={itemVariants} className="section-subtitle">
-              Modern, fast, and conversion-focused websites tailored for your local business.
-            </motion.p>
+            <motion.p variants={itemVariants} className="section-subtitle">Modern, fast, and conversion-focused websites tailored for your business.</motion.p>
 
             <div className="solution__grid">
               <motion.div variants={itemVariants} whileHover={{ scale: 1.05 }} className="solution__card">
@@ -543,165 +507,25 @@ export default function Home() {
       </PerspectiveSection>
 
       {/* PRICING SECTION */}
-      <PerspectiveSection>
-        <motion.section 
-          initial={{ opacity: 0 }}
-          whileInView={{ opacity: 1 }}
-          viewport={{ once: true }}
-          className="section pricing-section" 
-          id="pricing"
-        >
-          <div className="container">
-            <motion.h2 {...fadeInUp} className="section-title haptic-float">Simple, Transparent Pricing</motion.h2>
-            <motion.p {...fadeInUp} className="section-subtitle">
-              Choose the plan that fits your business. No hidden charges, no surprises.
-            </motion.p>
-
-            <motion.div 
-              initial={{ scale: 0.9, opacity: 0 }}
-              whileInView={{ scale: 1, opacity: 1 }}
-              viewport={{ once: true }}
-              className="pricing__offer"
-            >
-              <span>🔥 First 5 customers get <strong>10% OFF</strong> — Limited Time!</span>
-            </motion.div>
-
-            <motion.div 
-              variants={staggerContainer}
-              initial="initial"
-              whileInView="whileInView"
-              viewport={{ once: true }}
-              className="pricing__grid"
-            >
-              {pricingPlans.map((plan) => (
-                <motion.div
-                  key={plan.name}
-                  variants={itemVariants}
-                  whileHover={{ y: -15, transition: { duration: 0.3 } }}
-                  className={`pricing__card-outer ${plan.popular ? 'is-popular' : ''}`}
-                  style={{ zIndex: plan.popular ? 2 : 1 }}
-                >
-                  <SpotlightCard>
-                    <div className={`pricing__card card ${plan.popular ? 'pricing__card--popular' : ''}`}>
-                      {plan.popular && (
-                        <div className="pricing__popular-badge">
-                          <HiOutlineStar /> Most Popular
-                        </div>
-                      )}
-
-                      <h3 className="pricing__name skeuo-text-etched">{plan.name}</h3>
-                      <p className="pricing__description">{plan.description}</p>
-
-                      <div className="pricing__price">
-                        <span className="pricing__amount skeuo-text-etched">{plan.price}</span>
-                        <span className="pricing__period">one-time</span>
-                      </div>
-
-                      <ul className="pricing__features">
-                        {plan.features.map((feature) => (
-                          <li key={feature} className="pricing__feature">
-                            <HiOutlineCheck className="pricing__feature-icon" />
-                            {feature}
-                          </li>
-                        ))}
-                      </ul>
-
-                      <motion.a
-                        whileHover={{ scale: 1.02 }}
-                        whileTap={{ scale: 0.98 }}
-                        href={`https://wa.me/919746520910?text=Hi! I'm interested in the ${plan.name} plan (${plan.price})`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className={`btn ${plan.popular ? 'btn-primary' : 'btn-secondary'}`}
-                      >
-                        Get Started <HiOutlineArrowRight />
-                      </motion.a>
-                    </div>
-                  </SpotlightCard>
-                </motion.div>
-              ))}
-            </motion.div>
-          </div>
-        </motion.section>
-      </PerspectiveSection>
-
-      {/* PORTFOLIO SECTION */}
-      <PerspectiveSection>
-        <motion.section 
-          variants={staggerContainer}
-          initial="initial"
-          whileInView="whileInView"
-          viewport={{ once: true }}
-          className="section portfolio-section" 
-          id="portfolio"
-        >
-          <div className="container">
-            <motion.h2 variants={itemVariants} className="section-title haptic-float">Our Work Speaks</motion.h2>
-            <motion.p variants={itemVariants} className="section-subtitle">
-              Check out some of the stunning websites we've built for businesses like yours.
-            </motion.p>
-
-            <div className="portfolio__grid">
-              {portfolioItems.map((item) => (
-                <PortfolioCard key={item.title} item={item} />
-              ))}
-            </div>
-          </div>
-        </motion.section>
-      </PerspectiveSection>
-
-      {/* CTA SECTION */}
-      <section className="section cta-section" id="contact">
+      <section className="section pricing-section" id="pricing">
         <div className="container">
-          <motion.div 
-            initial={{ opacity: 0, scale: 0.95 }}
-            whileInView={{ opacity: 1, scale: 1 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.8 }}
-            className="cta__card"
-          >
-            <div className="cta__bg">
-              <motion.div 
-                animate={{ 
-                  x: [0, 50, 0],
-                  y: [0, 30, 0]
-                }}
-                transition={{ duration: 10, repeat: Infinity }}
-                className="cta__orb cta__orb--1"
-              ></motion.div>
-              <motion.div 
-                animate={{ 
-                  x: [0, -50, 0],
-                  y: [0, -30, 0]
-                }}
-                transition={{ duration: 12, repeat: Infinity }}
-                className="cta__orb cta__orb--2"
-              ></motion.div>
-            </div>
-
-            <h2 className="cta__title">Start Your Website Today</h2>
-            <p className="cta__text">
-              Get a professional website for your business. Fast delivery, modern design, and affordable pricing.
-            </p>
-
-            <div className="cta__actions">
-              <motion.a
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                href="https://wa.me/919746520910?text=Hi! I want to start building my website"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="btn btn-whatsapp btn-lg"
-              >
-                <FaWhatsapp size={20} /> Chat on WhatsApp
-              </motion.a>
-              <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
-                <Link to="/login" className="btn btn-secondary btn-lg">
-                  Get Free Demo <HiOutlineArrowRight />
-                </Link>
+          <motion.h2 {...fadeInUp} className="section-title">Simple, Transparent Pricing</motion.h2>
+          <div className="pricing__grid">
+            {pricingPlans.map((plan) => (
+              <motion.div key={plan.name} variants={itemVariants} className={`pricing__card-outer ${plan.popular ? 'is-popular' : ''}`}>
+                <SpotlightCard>
+                  <div className={`pricing__card card ${plan.popular ? 'pricing__card--popular' : ''}`}>
+                    <h3 className="pricing__name">{plan.name}</h3>
+                    <div className="pricing__price"><span className="pricing__amount">{plan.price}</span></div>
+                    <ul className="pricing__features">
+                      {plan.features.map(f => <li key={f}><HiOutlineCheck /> {f}</li>)}
+                    </ul>
+                    <a href={`https://wa.me/919746520910?text=I'm interested in ${plan.name} plan`} target="_blank" rel="noopener noreferrer" className="btn btn-primary">Choose Plan</a>
+                  </div>
+                </SpotlightCard>
               </motion.div>
-            </div>
-          </motion.div>
+            ))}
+          </div>
         </div>
       </section>
 
@@ -713,22 +537,13 @@ export default function Home() {
               <img src={logoImg} alt="Elementra" className="footer__logo-img" />
               <p className="footer__tagline">Building premium websites for local businesses.</p>
             </div>
-
             <div className="footer__links">
               <Link to="/pricing">Pricing</Link>
               <Link to="/portfolio">Portfolio</Link>
               <Link to="/contact">Contact</Link>
               <Link to="/login">Client Login</Link>
-              <a
-                href="https://wa.me/919746520910"
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                WhatsApp
-              </a>
             </div>
           </div>
-
           <div className="footer__bottom">
             <p>© 2026 Elementra. All rights reserved.</p>
           </div>

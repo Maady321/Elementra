@@ -3,6 +3,8 @@ import { motion } from 'framer-motion';
 import { FaWhatsapp, FaInstagram, FaLinkedin } from 'react-icons/fa';
 import { HiOutlineMail, HiOutlinePhone, HiOutlineLocationMarker, HiOutlineClock } from 'react-icons/hi';
 import SpotlightCard from '../../components/SpotlightCard/SpotlightCard';
+import { supabase } from '../../lib/supabase';
+import { Helmet } from 'react-helmet-async';
 import './Contact.css';
 
 const staggerContainer = {
@@ -21,25 +23,50 @@ const itemVariants = {
 };
 
 export default function Contact() {
-  const [formData, setFormData] = useState({
-    name: '',
-    email: '',
-    phone: '',
-    message: '',
-  });
+  const [formData, setFormData] = useState({ name: '', email: '', phone: '', message: '' });
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitSuccess, setSubmitSuccess] = useState(false);
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    const msg = `Hi! I'm ${formData.name}.%0A%0A${formData.message}%0A%0AEmail: ${formData.email}%0APhone: ${formData.phone}`;
-    window.open(`https://wa.me/919746520910?text=${msg}`, '_blank');
+    setIsSubmitting(true);
+    
+    try {
+      // Save to Supabase leads table as backup
+      await supabase.from('leads').insert([{
+        name: formData.name,
+        email: formData.email,
+        business_type: formData.message,
+        status: 'new'
+      }]);
+      
+      const msg = `Hi! I'm ${formData.name}.%0A%0A${formData.message}%0A%0AEmail: ${formData.email}%0APhone: ${formData.phone}`;
+      window.open(`https://wa.me/919746520910?text=${msg}`, '_blank');
+      
+      setSubmitSuccess(true);
+      setFormData({ name: '', email: '', phone: '', message: '' });
+    } catch (err) {
+      console.error('Submission error:', err);
+      // Still open WhatsApp even if DB save fails
+      const msg = `Hi! I'm ${formData.name}.%0A%0A${formData.message}%0A%0AEmail: ${formData.email}%0APhone: ${formData.phone}`;
+      window.open(`https://wa.me/919746520910?text=${msg}`, '_blank');
+      setSubmitSuccess(true);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
     <div className="contact-page">
+      <Helmet>
+        <title>Contact Us — Elementra</title>
+        <meta name="description" content="Reach out to Elementra for professional web development inquiries. We respond within 24 hours." />
+      </Helmet>
+
       {/* PAGE HERO */}
       <section className="page-hero">
         <div className="page-hero__bg">
@@ -82,6 +109,18 @@ export default function Contact() {
                   <h2 className="contact__form-title">Send a Message</h2>
                   <p className="contact__form-subtitle">Fill out the form and we'll get back to you within 24 hours.</p>
                   
+                  {submitSuccess && (
+                    <div style={{ 
+                      padding: '1rem', borderRadius: '8px', 
+                      background: 'rgba(74, 222, 128, 0.1)', 
+                      border: '1px solid #4ade80', color: '#4ade80',
+                      marginBottom: '1.5rem', textAlign: 'center',
+                      fontSize: '0.875rem'
+                    }}>
+                      ✅ Message received! We'll be in touch soon. Check WhatsApp if it opened.
+                    </div>
+                  )}
+
                   <form onSubmit={handleSubmit} className="contact__form">
                     <div className="form-group">
                       <label className="form-label" htmlFor="contact-name">Full Name</label>
@@ -141,8 +180,9 @@ export default function Contact() {
                       whileTap={{ scale: 0.98 }}
                       type="submit"
                       className="btn btn-primary btn-lg contact__submit-btn"
+                      disabled={isSubmitting}
                     >
-                      <FaWhatsapp size={18} /> Send via WhatsApp
+                      <FaWhatsapp size={18} /> {isSubmitting ? 'Sending...' : 'Send via WhatsApp'}
                     </motion.button>
                   </form>
                 </div>

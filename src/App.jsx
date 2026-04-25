@@ -11,6 +11,8 @@ import AIArchitect from './pages/AIArchitect/AIArchitect';
 import Pricing from './pages/Pricing/Pricing';
 import Portfolio from './pages/Portfolio/Portfolio';
 import Contact from './pages/Contact/Contact';
+import AdminProtectedRoute from './components/ProtectedRoute/AdminProtectedRoute';
+import NotFound from './pages/NotFound/NotFound';
 import ChatWidget from './components/Chatbot/ChatWidget';
 import Cursor from './components/Cursor/Cursor';
 import { useEffect } from 'react';
@@ -138,8 +140,20 @@ function AnimatedRoutes() {
           path="/admin/dashboard"
           element={
             <PageWrapper>
+              <AdminProtectedRoute>
+                <Layout hideNav>
+                  <AdminDashboard />
+                </Layout>
+              </AdminProtectedRoute>
+            </PageWrapper>
+          }
+        />
+        <Route
+          path="*"
+          element={
+            <PageWrapper>
               <Layout hideNav>
-                <AdminDashboard />
+                <NotFound />
               </Layout>
             </PageWrapper>
           }

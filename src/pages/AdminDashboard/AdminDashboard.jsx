@@ -20,6 +20,7 @@ import {
   HiOutlineShieldCheck,
 } from 'react-icons/hi';
 import { supabase } from '../../lib/supabase';
+import toast from 'react-hot-toast';
 import logoImg from '../../assets/logo.png';
 import './AdminDashboard.css';
 
@@ -149,34 +150,10 @@ export default function AdminDashboard() {
   };
 
   useEffect(() => {
-    const adminToken = localStorage.getItem('elmentra_admin_token');
-    if (!adminToken) {
-      navigate('/admin');
-      return;
-    }
-
-    // Validate token server-side on every page load
-    fetch('/api/admin-validate', {
-      headers: { 'Authorization': `Bearer ${adminToken}` },
-    })
-      .then((r) => r.json())
-      .then((result) => {
-        if (!result.valid) {
-          localStorage.removeItem('elmentra_admin_token');
-          localStorage.removeItem('elmentra_admin_user');
-          navigate('/admin');
-        } else {
-          loadClients();
-          loadLeads();
-          loadProfiles();
-        }
-      })
-      .catch(() => {
-        localStorage.removeItem('elmentra_admin_token');
-        localStorage.removeItem('elmentra_admin_user');
-        navigate('/admin');
-      });
-  }, [navigate]);
+    loadClients();
+    loadLeads();
+    loadProfiles();
+  }, []);
 
   useEffect(() => {
     if (!selectedClient) return;
@@ -364,7 +341,7 @@ export default function AdminDashboard() {
         // Update lead status to closed
         await supabase.from('leads').update({ status: 'closed' }).eq('id', lead.id);
 
-        alert('Project created successfully! You can find it in All Clients tab.');
+        toast.success('Project created successfully!');
         setActiveSection('clients');
         setSelectedClient({ ...project, updates: [], progress: 0, startDate: new Date().toISOString().split('T')[0] });
         loadLeads();
@@ -387,10 +364,15 @@ export default function AdminDashboard() {
     }
   };
 
-  const handleLogout = () => {
-    localStorage.removeItem('elmentra_admin_token');
-    localStorage.removeItem('elmentra_admin_user');
-    navigate('/admin');
+  const handleLogout = async () => {
+    try {
+      await fetch('/api/admin-logout', { method: 'POST' });
+      localStorage.removeItem('elementra_admin_user');
+      toast.success('Logged out');
+      navigate('/admin');
+    } catch (err) {
+      toast.error('Logout failed');
+    }
   };
 
   const stats = {
@@ -416,14 +398,18 @@ export default function AdminDashboard() {
         paid: false
       }]).select().single();
       
-      if (error) throw error;
+      if (error) {
+        toast.error('Failed to add client. Check your connection.');
+        console.error('Error adding client:', error.message);
+      } else {
+        toast.success('Client added successfully!');
+        setShowAddClient(false);
+        loadClients();
+      }
       
-      await loadClients();
       setNewClient({ name: '', email: '', project: '', plan: 'Basic', pages: 1, theme: 'Modern', amount: 1499 });
-      setShowAddClient(false);
     } catch (err) {
       console.error('Error adding client:', err.message);
-      alert('Failed to add client.');
     }
   };
 
@@ -433,8 +419,9 @@ export default function AdminDashboard() {
         await supabase.from('projects').delete().eq('id', id);
         setClients(clients.filter((c) => c.id !== id));
         if (selectedClient?.id === id) setSelectedClient(null);
+        toast.success('Client deleted');
       } catch (err) {
-        console.error('Error deleting:', err.message);
+        toast.error('Error deleting client');
       }
     }
   };
@@ -450,8 +437,9 @@ export default function AdminDashboard() {
         }
         return c;
       }));
+      toast.success('Status updated');
     } catch (err) {
-      console.error('Status check fail:', err.message);
+      toast.error('Status update failed');
     }
   };
 
@@ -461,8 +449,9 @@ export default function AdminDashboard() {
     try {
       await supabase.from('projects').update({ paid: !client.paid }).eq('id', id);
       setClients(clients.map((c) => c.id === id ? { ...c, paid: !c.paid } : c));
+      toast.success('Payment status toggled');
     } catch (err) {
-      console.error('Toggle paid fail:', err.message);
+      toast.error('Failed to update payment');
     }
   };
 
@@ -483,7 +472,14 @@ export default function AdminDashboard() {
         image: finalImg
       }]).select().single();
       
-      if (error) throw error;
+      if (error) {
+        toast.error('Failed to post update.');
+      } else {
+        toast.success('Update posted!');
+        setShowAddUpdate(false);
+        setNewUpdate({ title: '', description: '', image: null });
+        loadClients();
+      }
 
       const formattedUpdate = {
         ...data,
@@ -497,11 +493,8 @@ export default function AdminDashboard() {
       ));
       logActivity(selectedClient.id, 'update_added', `New update posted: ${newUpdate.title}`);
       setSelectedClient({ ...selectedClient, updates: [formattedUpdate, ...selectedClient.updates] });
-      setNewUpdate({ title: '', description: '', image: null });
-      setShowAddUpdate(false);
     } catch (err) {
       console.error('Error adding update:', err.message);
-      alert('Failed to add update.');
     } finally {
       setIsUploadingUpdate(false);
     }
@@ -521,8 +514,9 @@ export default function AdminDashboard() {
       if (error) throw error;
       setProgressSteps([...progressSteps, data]);
       setNewStepLabel('');
+      toast.success('Step added');
     } catch (err) {
-      console.error('Add Step Error:', err.message);
+      toast.error('Failed to add step');
     }
   };
 
@@ -536,7 +530,7 @@ export default function AdminDashboard() {
       if (error) throw error;
       setProgressSteps(progressSteps.map(s => s.id === stepId ? { ...s, status: nextStatus } : s));
     } catch (err) {
-      console.error('Toggle Step Error:', err.message);
+      toast.error('Failed to update step');
     }
   };
 
@@ -544,8 +538,9 @@ export default function AdminDashboard() {
     try {
       await supabase.from('progress_steps').delete().eq('id', stepId);
       setProgressSteps(progressSteps.filter(s => s.id !== stepId));
+      toast.success('Step deleted');
     } catch (err) {
-      console.error('Delete Step Error:', err.message);
+      toast.error('Failed to delete step');
     }
   };
 
@@ -558,8 +553,9 @@ export default function AdminDashboard() {
       logActivity(selectedClient.id, 'feature_toggled', `${featureName} ${updatedFeatures[featureName] ? 'enabled' : 'disabled'}`);
       setSelectedClient({ ...selectedClient, features: updatedFeatures });
       setClients(clients.map(c => c.id === selectedClient.id ? { ...c, features: updatedFeatures } : c));
+      toast.success('Feature updated');
     } catch (err) {
-      console.error('Toggle Feature Error:', err.message);
+      toast.error('Failed to update feature');
     }
   };
 
@@ -568,17 +564,18 @@ export default function AdminDashboard() {
     const fileName = `${Math.random()}.${fileExt}`;
     const filePath = `uploads/${fileName}`;
 
-    const { error: uploadError } = await supabase.storage
+    const { error } = await supabase.storage
       .from('project-images')
       .upload(filePath, file);
 
-    if (uploadError) throw uploadError;
-
-    const { data: { publicUrl } } = supabase.storage
-      .from('project-images')
-      .getPublicUrl(filePath);
-
-    return publicUrl;
+    if (error) {
+      toast.error('Failed to upload image. Please try again.');
+      throw error;
+    } else {
+      const { data: { publicUrl } } = supabase.storage.from('project-images').getPublicUrl(filePath);
+      toast.success('Image uploaded!');
+      return publicUrl;
+    }
   };
 
   const handleImageUpload = async (e) => {
@@ -653,7 +650,9 @@ export default function AdminDashboard() {
         await supabase.from('projects').delete().in('id', selectedIds);
         setClients(clients.filter(c => !selectedIds.includes(c.id)));
         setSelectedIds([]);
+        toast.success('Projects deleted');
       } catch (err) {
+        toast.error('Bulk Delete Error');
         console.error('Bulk Delete Error:', err.message);
       }
     }
@@ -862,15 +861,21 @@ export default function AdminDashboard() {
                   
                   <div className="form-group" style={{marginTop: '2rem'}}>
                     <label className="form-label">Username</label>
-                    <input type="text" className="form-input" disabled value={localStorage.getItem('elmentra_admin_user') || 'admin'} />
+                    <input type="text" className="form-input" disabled value={localStorage.getItem('elementra_admin_user') || 'admin'} />
                   </div>
 
                   <hr style={{margin: '2rem 0', opacity: 0.1}}/>
                   
                   <div className="admin__settings-danger">
-                     <h3>Security</h3>
-                     <p>Changes to security settings require re-authentication.</p>
-                     <button className="btn btn-secondary" onClick={() => alert('Password reset link sent to admin email (simulated).')}>Change Password</button>
+                     <h3>Change Admin Password</h3>
+                     <p>To change your admin password, run the following in your Supabase SQL Editor:</p>
+                     <code style={{display:'block', padding:'1rem', background:'rgba(0,0,0,0.3)', 
+                                   borderRadius:'8px', marginTop:'0.5rem', fontSize:'12px',
+                                   fontFamily:'monospace', lineHeight:'1.6', color: '#10b981'}}>
+                       UPDATE admins<br/>
+                       SET password_hash = crypt('your_new_password', gen_salt('bf'))<br/>
+                       WHERE username = '{localStorage.getItem('elementra_admin_user') || 'your_username'}';
+                     </code>
                   </div>
                </div>
             </div>

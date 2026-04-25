@@ -97,10 +97,10 @@ CREATE TABLE IF NOT EXISTS admins (
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Insert the default admin credential securely
--- You can change 'admin@elmentra' and 'ADm!N@e1enTra@2026' before running
-INSERT INTO admins (username, password_hash) 
-VALUES ('admin@elmentra', crypt('ADm!N@e1enTra@2026', gen_salt('bf')));
+-- SECURITY: Do NOT insert admin credentials here.
+-- Run this manually in Supabase SQL Editor with your own credentials:
+-- INSERT INTO admins (username, password_hash) 
+-- VALUES ('your_username', crypt('your_password', gen_salt('bf')));
 
 ALTER TABLE admins ENABLE ROW LEVEL SECURITY;
 

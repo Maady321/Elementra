@@ -428,6 +428,17 @@
   margin-top: var(--space-xl);
 }
 
+@keyframes skeleton-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+
+.dashboard--loading {
+  padding: 2rem;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
 @keyframes pulse {
   0% { transform: scale(1); opacity: 1; }
   50% { transform: scale(1.2); opacity: 0.8; }

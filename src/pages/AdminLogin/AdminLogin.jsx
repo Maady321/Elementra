@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useSearchParams, useNavigate, Link } from 'react-router-dom';
-import { HiOutlineLockClosed, HiOutlineUser, HiOutlineArrowRight, HiOutlineShieldCheck, HiOutlineExclamation } from 'react-icons/hi';
+import { HiOutlineLockClosed, HiOutlineUser, HiOutlineArrowRight, HiOutlineExclamation } from 'react-icons/hi';
+import toast from 'react-hot-toast';
 
 import logoImg from '../../assets/logo.png';
 import './AdminLogin.css';
@@ -8,7 +9,6 @@ import './AdminLogin.css';
 export default function AdminLogin() {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -17,7 +17,6 @@ export default function AdminLogin() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setError('');
     setLoading(true);
 
     try {
@@ -29,19 +28,16 @@ export default function AdminLogin() {
 
       const data = await response.json();
 
-      if (response.ok && data.token) {
-        localStorage.setItem('elmentra_admin_token', data.token);
-        localStorage.setItem('elmentra_admin_user', data.username);
+      if (response.ok) {
+        localStorage.setItem('elementra_admin_user', data.username);
+        toast.success('Admin authenticated successfully');
         navigate('/admin/dashboard');
       } else {
-        setError(data.error || 'Invalid admin credentials. Please try again.');
-        if (data.hint) {
-          console.warn('API Hint:', data.hint);
-        }
+        toast.error(data.error || 'Invalid admin credentials. Please try again.');
       }
     } catch (err) {
       console.error(err);
-      setError('An error occurred while verifying the credentials.');
+      toast.error('An error occurred while verifying the credentials.');
     } finally {
       setLoading(false);
     }
@@ -72,17 +68,11 @@ export default function AdminLogin() {
         <div className="admin-login__card">
           <div className="admin-login__header">
             <Link to="/" className="admin-login__logo-wrap">
-              <img src={logoImg} alt="Elmentra" className="admin-login__logo-img" />
+              <img src={logoImg} alt="Elementra" className="admin-login__logo-img" />
             </Link>
             <h1 className="admin-login__title">Admin Panel</h1>
             <p className="admin-login__subtitle">Secure access for administrators only</p>
           </div>
-
-          {error && (
-            <div className="admin-login__alert">
-              <span>⚠️</span> {error}
-            </div>
-          )}
 
           <form onSubmit={handleSubmit} className="admin-login__form">
             <div className="form-group">
@@ -92,7 +82,7 @@ export default function AdminLogin() {
                 <input
                   type="text"
                   className="form-input admin-login__input"
-                  placeholder="admin_elmentra"
+                  placeholder="admin_elementra"
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
                   required
@@ -129,7 +119,6 @@ export default function AdminLogin() {
               )}
             </button>
           </form>
-
 
           <div className="admin-login__footer">
             <Link to="/login">← Back to Client Login</Link>

@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import logoImg from '../../assets/logo.png';
+import { Helmet } from 'react-helmet-async';
 import './Login.css';
 
 export default function Login() {
@@ -44,8 +45,11 @@ export default function Login() {
     }
   };
 
-  return (
     <div className="skeuo-page">
+      <Helmet>
+        <title>Client Login — Elementra</title>
+        <meta name="description" content="Login to your Elementra workspace to track your project progress and communicate with our team." />
+      </Helmet>
       {/* Background elements to mimic the dark purple/blue highly animated styling */}
       <div className="bg-canvas">
         <div className="bg-orb bg-orb-purple"></div>
@@ -65,7 +69,7 @@ export default function Login() {
         <div className="skeuo-card-area-left">
           <div className="brand-logo">
             <Link to="/">
-              <img src={logoImg} alt="Elmentra" />
+              <img src={logoImg} alt="Elementra" />
             </Link>
           </div>
           
@@ -79,7 +83,7 @@ export default function Login() {
           </div>
 
           <div className="brand-footer">
-            www.elmentra.com
+            www.elementra.dev
           </div>
         </div>
 
