@@ -61,7 +61,8 @@ export default function AdminDashboard() {
   const [selectedIds, setSelectedIds] = useState([]);
 
   const [leads, setLeads] = useState([]);
-  const [users, setUsers] = useState([]); // All registered profiles
+  const [profiles, setProfiles] = useState([]); // Real profiles from DB
+  const [users, setUsers] = useState([]); // Derived from projects for specific sections
   const [selectedLead, setSelectedLead] = useState(null);
   const [leadMessages, setLeadMessages] = useState([]);
   const [leadReply, setLeadReply] = useState('');
@@ -126,14 +127,55 @@ export default function AdminDashboard() {
     }
   };
 
-  useEffect(() => {
-    const admin = localStorage.getItem('elmentra_admin');
-    if (!admin) {
-      navigate('/admin');
-    } else {
-      loadClients();
-      loadLeads();
+  // Load Real Profiles from Supabase
+  const loadProfiles = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .order('created_at', { ascending: false });
+      
+      if (error) {
+        if (error.code === 'PGRST116' || error.code === '42P01') {
+           console.warn('Profiles table might not exist yet.');
+           return;
+        }
+        throw error;
+      }
+      setProfiles(data);
+    } catch (err) {
+      console.error('Error loading profiles:', err.message);
     }
+  };
+
+  useEffect(() => {
+    const adminToken = localStorage.getItem('elmentra_admin_token');
+    if (!adminToken) {
+      navigate('/admin');
+      return;
+    }
+
+    // Validate token server-side on every page load
+    fetch('/api/admin-validate', {
+      headers: { 'Authorization': `Bearer ${adminToken}` },
+    })
+      .then((r) => r.json())
+      .then((result) => {
+        if (!result.valid) {
+          localStorage.removeItem('elmentra_admin_token');
+          localStorage.removeItem('elmentra_admin_user');
+          navigate('/admin');
+        } else {
+          loadClients();
+          loadLeads();
+          loadProfiles();
+        }
+      })
+      .catch(() => {
+        localStorage.removeItem('elmentra_admin_token');
+        localStorage.removeItem('elmentra_admin_user');
+        navigate('/admin');
+      });
   }, [navigate]);
 
   useEffect(() => {
@@ -249,6 +291,28 @@ export default function AdminDashboard() {
     return () => supabase.removeChannel(leadChannel);
   }, []);
 
+  useEffect(() => {
+    const uniqueMap = {};
+    clients.forEach(client => {
+      if (!client.email) return;
+      if (!uniqueMap[client.email]) {
+        uniqueMap[client.email] = {
+          id: client.email,
+          name: client.name || 'Anonymous',
+          email: client.email,
+          startDate: client.startDate,
+          projectsCount: 1
+        };
+      } else {
+        uniqueMap[client.email].projectsCount += 1;
+        if (new Date(client.startDate) < new Date(uniqueMap[client.email].startDate)) {
+          uniqueMap[client.email].startDate = client.startDate;
+        }
+      }
+    });
+    setUsers(Object.values(uniqueMap));
+  }, [clients]);
+
   const handleSendLeadReply = async (e) => {
     e.preventDefault();
     if (!selectedLead || !leadReply.trim()) return;
@@ -324,7 +388,8 @@ export default function AdminDashboard() {
   };
 
   const handleLogout = () => {
-    localStorage.removeItem('elmentra_admin');
+    localStorage.removeItem('elmentra_admin_token');
+    localStorage.removeItem('elmentra_admin_user');
     navigate('/admin');
   };
 
@@ -606,12 +671,9 @@ export default function AdminDashboard() {
       </header>
 
       {/* SIDEBAR FOR DESKTOP */}
-      <aside className="admin__sidebar">
+      <aside className="admin__sidebar" data-antigravity-debug="admin-logo-removed">
         <div className="admin__sidebar-header">
-          <Link to="/" className="admin__sidebar-logo-wrap">
-            <img src={logoImg} alt="Elementra" className="admin__sidebar-logo-img" />
-          </Link>
-          <span className="admin__role-badge">Admin</span>
+          <span className="admin__role-badge">Admin Panel</span>
         </div>
 
         <nav className="admin__nav">
@@ -800,7 +862,7 @@ export default function AdminDashboard() {
                   
                   <div className="form-group" style={{marginTop: '2rem'}}>
                     <label className="form-label">Username</label>
-                    <input type="text" className="form-input" disabled value={JSON.parse(localStorage.getItem('elmentra_admin'))?.username} />
+                    <input type="text" className="form-input" disabled value={localStorage.getItem('elmentra_admin_user') || 'admin'} />
                   </div>
 
                   <hr style={{margin: '2rem 0', opacity: 0.1}}/>
@@ -925,6 +987,16 @@ export default function AdminDashboard() {
                 <table className="admin__table">
                   <thead>
                     <tr>
+                      <th style={{ width: '40px' }}>
+                        <input 
+                          type="checkbox" 
+                          onChange={(e) => {
+                            if (e.target.checked) setSelectedIds(filteredClients.map(c => c.id));
+                            else setSelectedIds([]);
+                          }}
+                          checked={selectedIds.length === filteredClients.length && filteredClients.length > 0}
+                        />
+                      </th>
                       <th>Client Info</th>
                       <th>Project Overview</th>
                       <th>Plan & Pages</th>
@@ -937,7 +1009,20 @@ export default function AdminDashboard() {
                   </thead>
                   <tbody>
                     {filteredClients.map((client) => (
-                      <tr key={client.id} onClick={() => setSelectedClient(client)} className="admin__row-hover">
+                      <tr key={client.id} onClick={() => setSelectedClient(client)} className={`admin__row-hover ${selectedIds.includes(client.id) ? 'admin__row--selected' : ''}`}>
+                        <td onClick={(e) => e.stopPropagation()}>
+                          <input 
+                            type="checkbox" 
+                            checked={selectedIds.includes(client.id)}
+                            onChange={() => {
+                              setSelectedIds(prev => 
+                                prev.includes(client.id) 
+                                ? prev.filter(id => id !== client.id) 
+                                : [...prev, client.id]
+                              );
+                            }}
+                          />
+                        </td>
                         <td>
                           <div className="admin__client-cell">
                             <div className="admin__client-avatar">{(client.name || 'C')[0]}</div>
@@ -1022,23 +1107,26 @@ export default function AdminDashboard() {
                     </tr>
                   </thead>
                   <tbody>
-                    {clients.map(user => (
-                      <tr key={user.id}>
+                    {profiles.map(p => (
+                      <tr key={p.id}>
                         <td>
                           <div className="admin__client-cell">
-                            <div className="admin__client-avatar" style={{ background: 'var(--grad-primary)' }}>{(user.name || 'U')[0]}</div>
-                            <span className="admin__client-name">{user.name}</span>
+                            <div className="admin__client-avatar" style={{ background: 'var(--grad-primary)' }}>{(p.full_name || p.name || p.email || 'U')[0].toUpperCase()}</div>
+                            <span className="admin__client-name">{p.full_name || p.name || 'N/A'}</span>
                           </div>
                         </td>
-                        <td>{user.email}</td>
-                        <td>{user.startDate}</td>
-                        <td><span className="badge badge-success">Verified</span></td>
-                        <td>{clients.filter(p => p.email === user.email).length} Projects</td>
+                        <td>{p.email}</td>
+                        <td>{p.created_at ? new Date(p.created_at).toLocaleDateString() : 'N/A'}</td>
+                        <td><span className="badge badge-success">Active</span></td>
+                        <td>
+                          {/* Match with projects to show count */}
+                          {clients.filter(c => c.email === p.email).length} Projects
+                        </td>
                       </tr>
                     ))}
-                    {clients.length === 0 && (
+                    {profiles.length === 0 && (
                       <tr>
-                        <td colSpan="5" className="admin__empty">No users found in database.</td>
+                        <td colSpan="5" className="admin__empty">No profiles found in the database.</td>
                       </tr>
                     )}
                   </tbody>

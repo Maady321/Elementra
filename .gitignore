@@ -11,6 +11,10 @@ dist/
 dist-ssr/
 *.local
 
+# Test scripts with keys (never commit these)
+test_*.js
+build-log.txt
+
 # Environment Variables
 .env
 .env.local

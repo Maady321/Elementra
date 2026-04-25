@@ -3,9 +3,11 @@ import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { HiMenu, HiX } from 'react-icons/hi';
 import logoImg from '../../assets/logo.png';
+import Magnetic from '../Magnetic/Magnetic';
 import './Navbar.css';
 
 export default function Navbar() {
+  // ... rest of the component
   const [scrolled, setScrolled] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const { user, signOut } = useAuth();
@@ -41,26 +43,40 @@ export default function Navbar() {
         </Link>
 
         <div className={`navbar__links ${mobileOpen ? 'navbar__links--open' : ''}`}>
-          <Link to="/" className={`navbar__link ${location.pathname === '/' ? 'navbar__link--active' : ''}`}>
-            Home
-          </Link>
-          <a href="/#pricing" className="navbar__link">Pricing</a>
-          <a href="/#portfolio" className="navbar__link">Portfolio</a>
-          <a href="/#contact" className="navbar__link">Contact</a>
+          <Magnetic>
+            <Link to="/" className={`navbar__link ${location.pathname === '/' ? 'navbar__link--active' : ''}`}>
+              Home
+            </Link>
+          </Magnetic>
+          <Magnetic>
+            <Link to="/pricing" className={`navbar__link ${location.pathname === '/pricing' ? 'navbar__link--active' : ''}`}>Pricing</Link>
+          </Magnetic>
+          <Magnetic>
+            <Link to="/portfolio" className={`navbar__link ${location.pathname === '/portfolio' ? 'navbar__link--active' : ''}`}>Portfolio</Link>
+          </Magnetic>
+          <Magnetic>
+            <Link to="/contact" className={`navbar__link ${location.pathname === '/contact' ? 'navbar__link--active' : ''}`}>Contact</Link>
+          </Magnetic>
 
           {user ? (
             <>
-              <Link to="/dashboard" className={`navbar__link ${location.pathname === '/dashboard' ? 'navbar__link--active' : ''}`}>
-                Dashboard
-              </Link>
-              <button onClick={handleSignOut} className="btn btn-secondary btn-sm">
-                Logout
-              </button>
+              <Magnetic>
+                <Link to="/dashboard" className={`navbar__link ${location.pathname === '/dashboard' ? 'navbar__link--active' : ''}`}>
+                  Dashboard
+                </Link>
+              </Magnetic>
+              <Magnetic>
+                <button onClick={handleSignOut} className="btn btn-secondary btn-sm">
+                  Logout
+                </button>
+              </Magnetic>
             </>
           ) : (
-            <Link to="/login" className="btn btn-primary btn-sm">
-              Client Login
-            </Link>
+            <Magnetic>
+              <Link to="/login" className="btn btn-primary btn-sm">
+                Client Login
+              </Link>
+            </Magnetic>
           )}
         </div>
 

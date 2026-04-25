@@ -8,9 +8,25 @@ import Dashboard from './pages/Dashboard/Dashboard';
 import AdminLogin from './pages/AdminLogin/AdminLogin';
 import AdminDashboard from './pages/AdminDashboard/AdminDashboard';
 import AIArchitect from './pages/AIArchitect/AIArchitect';
+import Pricing from './pages/Pricing/Pricing';
+import Portfolio from './pages/Portfolio/Portfolio';
+import Contact from './pages/Contact/Contact';
 import ChatWidget from './components/Chatbot/ChatWidget';
+import Cursor from './components/Cursor/Cursor';
 import { useEffect } from 'react';
+import { AnimatePresence, motion } from 'framer-motion';
 import './App.css';
+
+const PageWrapper = ({ children }) => (
+  <motion.div
+    initial={{ opacity: 0, y: 20 }}
+    animate={{ opacity: 1, y: 0 }}
+    exit={{ opacity: 0, y: -20 }}
+    transition={{ duration: 0.4, ease: "easeOut" }}
+  >
+    {children}
+  </motion.div>
+);
 
 function AppLayout({ children, hideNav }) {
   return (
@@ -23,10 +39,8 @@ function AppLayout({ children, hideNav }) {
   );
 }
 
-export default function App() {
-  useEffect(() => {
-    document.body.className = 'dark-body';
-  }, []);
+function AnimatedRoutes() {
+  const location = useLocation();
 
   const Layout = ({ children, hideNav }) => (
     <AppLayout 
@@ -36,60 +50,114 @@ export default function App() {
   );
 
   return (
-    <AuthProvider>
-      <Router>
-        <Routes>
-          <Route
-            path="/"
-            element={
+    <AnimatePresence mode="wait">
+      <Routes location={location} key={location.pathname}>
+        <Route
+          path="/"
+          element={
+            <PageWrapper>
               <Layout>
                 <Home />
               </Layout>
-            }
-          />
-          <Route
-            path="/login"
-            element={
+            </PageWrapper>
+          }
+        />
+        <Route
+          path="/pricing"
+          element={
+            <PageWrapper>
+              <Layout>
+                <Pricing />
+              </Layout>
+            </PageWrapper>
+          }
+        />
+        <Route
+          path="/portfolio"
+          element={
+            <PageWrapper>
+              <Layout>
+                <Portfolio />
+              </Layout>
+            </PageWrapper>
+          }
+        />
+        <Route
+          path="/contact"
+          element={
+            <PageWrapper>
+              <Layout>
+                <Contact />
+              </Layout>
+            </PageWrapper>
+          }
+        />
+        <Route
+          path="/login"
+          element={
+            <PageWrapper>
               <Layout hideNav>
                 <Login />
               </Layout>
-            }
-          />
-          <Route
-            path="/ai-architect"
-            element={
+            </PageWrapper>
+          }
+        />
+        <Route
+          path="/ai-architect"
+          element={
+            <PageWrapper>
               <Layout hideNav>
                 <AIArchitect />
               </Layout>
-            }
-          />
-          <Route
-            path="/dashboard"
-            element={
+            </PageWrapper>
+          }
+        />
+        <Route
+          path="/dashboard"
+          element={
+            <PageWrapper>
               <ProtectedRoute>
-                <Layout>
+                <Layout hideNav>
                   <Dashboard />
                 </Layout>
               </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/admin"
-            element={
+            </PageWrapper>
+          }
+        />
+        <Route
+          path="/admin"
+          element={
+            <PageWrapper>
               <Layout hideNav>
                 <AdminLogin />
               </Layout>
-            }
-          />
-          <Route
-            path="/admin/dashboard"
-            element={
+            </PageWrapper>
+          }
+        />
+        <Route
+          path="/admin/dashboard"
+          element={
+            <PageWrapper>
               <Layout hideNav>
                 <AdminDashboard />
               </Layout>
-            }
-          />
-        </Routes>
+            </PageWrapper>
+          }
+        />
+      </Routes>
+    </AnimatePresence>
+  );
+}
+
+export default function App() {
+  useEffect(() => {
+    document.body.className = 'dark-body';
+  }, []);
+
+  return (
+    <AuthProvider>
+      <Router>
+        <AnimatedRoutes />
         <ChatBotSwitcher />
       </Router>
     </AuthProvider>

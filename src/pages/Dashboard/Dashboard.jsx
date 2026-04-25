@@ -51,6 +51,9 @@ export default function Dashboard() {
   const [chatImage, setChatImage] = useState(null);
   const [newComment, setNewComment] = useState('');
   const [activeTab, setActiveTab] = useState('overview');
+  const [isUpdating, setIsUpdating] = useState(false);
+  const [accountForm, setAccountForm] = useState({ name: '', password: '' });
+  const [accountStatus, setAccountStatus] = useState({ type: '', message: '' });
 
   const [projectId, setProjectId] = useState(null);
 
@@ -97,6 +100,7 @@ export default function Dashboard() {
           setCustomPages(projectData.num_pages);
           setCustomFeatures(projectData.features || { contactForm: false, whatsapp: false, booking: false });
           setCustomTheme(projectData.theme || 'Modern');
+          setAccountForm({ name: projectData.client_name || '', password: '' });
         }
 
         // Load progress steps
@@ -213,6 +217,7 @@ export default function Dashboard() {
       supabase.removeChannel(projectChannel);
       supabase.removeChannel(stepsChannel);
       supabase.removeChannel(updateChannel);
+      supabase.removeChannel(activityChannel);
     };
   }, [projectId]);
 
@@ -310,6 +315,44 @@ export default function Dashboard() {
     }
   };
 
+  const handleUpdateAccount = async (e) => {
+    e.preventDefault();
+    setIsUpdating(true);
+    setAccountStatus({ type: '', message: '' });
+
+    try {
+      // 1. Update Name in Projects table
+      if (accountForm.name !== clientData.name) {
+        const { error: pError } = await supabase
+          .from('projects')
+          .update({ client_name: accountForm.name })
+          .eq('id', projectId);
+        
+        if (pError) throw pError;
+        setClientData(prev => ({ ...prev, name: accountForm.name }));
+      }
+
+      // 2. Update Password in Supabase Auth if provided
+      if (accountForm.password) {
+        if (accountForm.password.length < 6) {
+          throw new Error('Password must be at least 6 characters.');
+        }
+        const { error: aError } = await supabase.auth.updateUser({
+          password: accountForm.password
+        });
+        if (aError) throw aError;
+        setAccountForm(prev => ({ ...prev, password: '' }));
+      }
+
+      setAccountStatus({ type: 'success', message: 'Account updated successfully!' });
+    } catch (err) {
+      console.error('Account update error:', err.message);
+      setAccountStatus({ type: 'error', message: err.message });
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
   const getProgressPercentage = () => {
     const completed = progress.filter((p) => p.status === 'completed').length;
     const currentStep = progress.findIndex((p) => p.status === 'current');
@@ -332,25 +375,20 @@ export default function Dashboard() {
     { id: 'updates', label: 'Updates', icon: <HiOutlinePhotograph /> },
     { id: 'comments', label: 'Comments', icon: <HiOutlineChatAlt /> },
     { id: 'customize', label: 'Customize', icon: <HiOutlineAdjustments /> },
+    { id: 'account', label: 'Account', icon: <HiOutlineUser /> },
   ];
 
   return (
     <div className="dashboard">
       <header className="dashboard__mobile-header">
-        <Link to="/" className="mobile-logo">
-           <img src={logoImg} alt="logo" height="32" />
-        </Link>
+        <div className="mobile-logo-removed-debug"></div>
         <button className="mobile-logout" onClick={() => { signOut(); navigate('/'); }}>
           <HiOutlineLogout size={20} />
         </button>
       </header>
 
-      <div className="dashboard__sidebar">
-        <div className="dashboard__sidebar-header">
-          <Link to="/" className="dashboard__sidebar-logo-wrap">
-            <img src={logoImg} alt="Elementra" className="dashboard__sidebar-logo-img" />
-          </Link>
-        </div>
+      <div className="dashboard__sidebar" data-antigravity-debug="logo-should-be-gone">
+        {/* Logo removed - if you still see it, please hard-refresh (Ctrl+F5) or check your route */}
 
         <nav className="dashboard__nav">
           {tabs.map((tab) => (
@@ -728,6 +766,94 @@ export default function Dashboard() {
                     style={{ width: '100%', marginTop: 'var(--space-lg)' }}
                   >
                     <FaWhatsapp /> Send Preferences on WhatsApp
+                  </a>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* ACCOUNT TAB */}
+          {activeTab === 'account' && (
+            <div className="dashboard__account animate-fade-in">
+              <div className="dashboard__account-card card">
+                <h2 className="dashboard__card-title">Account Settings</h2>
+                <p className="dashboard__card-subtitle">Manage your personal information and security.</p>
+
+                <form onSubmit={handleUpdateAccount} className="dashboard__account-form">
+                  {accountStatus.message && (
+                    <div className={`form-status form-status--${accountStatus.type}`}>
+                      {accountStatus.message}
+                    </div>
+                  )}
+
+                  <div className="form-grid">
+                    <div className="form-group">
+                      <label>Email Address</label>
+                      <input 
+                        type="email" 
+                        value={clientData.email} 
+                        disabled 
+                        className="form-input form-input--disabled" 
+                      />
+                      <small className="form-help">Your email is managed via auth and cannot be changed here.</small>
+                    </div>
+
+                    <div className="form-group">
+                      <label>Full Name</label>
+                      <input 
+                        type="text" 
+                        placeholder="Your Name"
+                        value={accountForm.name}
+                        onChange={(e) => setAccountForm({ ...accountForm, name: e.target.value })}
+                        className="form-input"
+                        required
+                      />
+                    </div>
+
+                    <div className="form-group">
+                      <label>Project Name</label>
+                      <input 
+                        type="text" 
+                        value={clientData.project_name} 
+                        disabled 
+                        className="form-input form-input--disabled" 
+                      />
+                    </div>
+
+                    <div className="form-group">
+                      <label>Current Plan</label>
+                      <div className="plan-badge-outline">{clientData.plan} Plan</div>
+                    </div>
+
+                    <div className="form-group form-group--full">
+                      <hr className="form-divider" />
+                      <label>Change Password</label>
+                      <input 
+                        type="password" 
+                        placeholder="Leave blank to keep current password"
+                        value={accountForm.password}
+                        onChange={(e) => setAccountForm({ ...accountForm, password: e.target.value })}
+                        className="form-input"
+                      />
+                      <small className="form-help">Minimum 6 characters required.</small>
+                    </div>
+                  </div>
+
+                  <div className="form-footer">
+                    <button type="submit" className="btn btn-primary" disabled={isUpdating}>
+                      {isUpdating ? 'Saving Changes...' : 'Save All Changes'}
+                    </button>
+                  </div>
+                </form>
+              </div>
+
+              <div className="dashboard__account-support card">
+                <h3>Need Help?</h3>
+                <p>If you need to change your subscription plan or project details, please contact our support team.</p>
+                <div className="support-actions">
+                  <a href="mailto:support@elementra.io" className="btn btn-secondary btn-sm">Email Support</a>
+                  <a href="https://wa.me/919746520910" target="_blank" rel="noopener noreferrer" className="btn btn-whatsapp btn-sm">
+                    <FaWhatsapp /> Chat on WhatsApp
                   </a>
                 </div>
               </div>

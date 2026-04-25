@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useSearchParams, useNavigate, Link } from 'react-router-dom';
 import { HiOutlineLockClosed, HiOutlineUser, HiOutlineArrowRight, HiOutlineShieldCheck, HiOutlineExclamation } from 'react-icons/hi';
-import { supabase } from '../../lib/supabase';
+
 import logoImg from '../../assets/logo.png';
 import './AdminLogin.css';
 
@@ -13,7 +13,7 @@ export default function AdminLogin() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const accessKey = searchParams.get('key');
-  const isAuthorizedURL = accessKey === 'elmentra-secure-2026';
+  const isAuthorizedURL = accessKey === import.meta.env.VITE_ADMIN_ACCESS_KEY;
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -21,22 +21,23 @@ export default function AdminLogin() {
     setLoading(true);
 
     try {
-      const { data: isValid, error: rpcError } = await supabase.rpc('verify_admin', { 
-        p_username: username, 
-        p_password: password 
+      const response = await fetch('/api/admin-verify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, password }),
       });
 
-      if (rpcError) throw rpcError;
+      const data = await response.json();
 
-      if (isValid) {
-        localStorage.setItem('elmentra_admin', JSON.stringify({
-          username: username,
-          role: 'admin',
-          loginTime: new Date().toISOString(),
-        }));
+      if (response.ok && data.token) {
+        localStorage.setItem('elmentra_admin_token', data.token);
+        localStorage.setItem('elmentra_admin_user', data.username);
         navigate('/admin/dashboard');
       } else {
-        setError('Invalid admin credentials. Please try again.');
+        setError(data.error || 'Invalid admin credentials. Please try again.');
+        if (data.hint) {
+          console.warn('API Hint:', data.hint);
+        }
       }
     } catch (err) {
       console.error(err);

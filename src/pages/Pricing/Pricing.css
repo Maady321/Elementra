@@ -1,0 +1,110 @@
+/* Pricing Page Styles */
+/* Reuses Home.css pricing styles + page-specific additions */
+
+.pricing-page {
+  min-height: 100vh;
+}
+
+/* ── Page Hero (shared across Pricing/Portfolio/Contact) ── */
+.page-hero {
+  position: relative;
+  padding: 140px 0 80px;
+  overflow: hidden;
+  text-align: center;
+}
+
+.page-hero__bg {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: var(--color-bg);
+  background-image: var(--grad-mesh);
+}
+
+.page-hero__orb {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(120px);
+  opacity: 0.15;
+}
+
+.page-hero__orb--1 {
+  width: 500px;
+  height: 500px;
+  background: var(--color-primary);
+  top: -150px;
+  right: -100px;
+}
+
+.page-hero__orb--2 {
+  width: 400px;
+  height: 400px;
+  background: var(--color-secondary);
+  bottom: -100px;
+  left: -100px;
+}
+
+.page-hero__grid {
+  position: absolute;
+  inset: 0;
+  background-image: radial-gradient(rgba(255, 255, 255, 0.04) 1px, transparent 1px);
+  background-size: 50px 50px;
+  opacity: 0.3;
+}
+
+.page-hero__content {
+  max-width: 700px;
+  margin: 0 auto;
+}
+
+.page-hero__title {
+  font-size: clamp(2.5rem, 6vw, 4rem);
+  font-weight: 800;
+  line-height: 1.1;
+  margin: 1.5rem 0 1rem;
+  letter-spacing: -0.03em;
+  color: #fff;
+}
+
+.text-gradient {
+  background: linear-gradient(135deg, #10b981 30%, #059669 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.page-hero__subtitle {
+  font-size: 1.15rem;
+  color: var(--color-text-muted);
+  max-width: 550px;
+  margin: 0 auto;
+  line-height: 1.7;
+}
+
+/* ── FAQ Section ── */
+.faq__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 1.5rem;
+  max-width: 900px;
+  margin: 0 auto;
+}
+
+.faq__card {
+  padding: 2rem;
+  height: 100%;
+}
+
+.faq__question {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: #fff;
+  margin-bottom: 0.75rem;
+  line-height: 1.4;
+}
+
+.faq__answer {
+  font-size: 0.9rem;
+  color: var(--color-text-muted);
+  line-height: 1.7;
+}

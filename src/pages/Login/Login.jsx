@@ -122,8 +122,16 @@ export default function Login() {
           </form>
           
           <div className="auth-switch-link">
-            <button type="button" onClick={() => { setIsSignUp(!isSignUp); setError(''); setSuccess(''); }}>
-              {isSignUp ? 'Already have an account? Login' : "Don't have an account? Register"}
+            <button 
+              type="button" 
+              className="auth-switch-button"
+              onClick={() => { setIsSignUp(!isSignUp); setError(''); setSuccess(''); }}
+            >
+              {isSignUp ? (
+                <>Already have an account? <span>Login</span></>
+              ) : (
+                <>Don't have an account? <span>Register</span></>
+              )}
             </button>
           </div>
         </div>
